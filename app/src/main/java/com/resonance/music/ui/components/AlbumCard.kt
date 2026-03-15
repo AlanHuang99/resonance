@@ -25,13 +25,13 @@ fun AlbumCard(
 ) {
     Column(
         modifier = Modifier
-            .width(150.dp)
+            .width(160.dp)
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
-                .size(150.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(160.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -57,7 +57,8 @@ fun AlbumCard(
         Text(
             text = album.name,
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
+            maxLines = 2,
+            minLines = 1,
             overflow = TextOverflow.Ellipsis
         )
 

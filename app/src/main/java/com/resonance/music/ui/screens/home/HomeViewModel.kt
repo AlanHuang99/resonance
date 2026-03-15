@@ -55,4 +55,8 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    fun getCoverArtUrl(coverArtId: String): String? {
+        return musicRepository.getCoverArtUrl(coverArtId)
+    }
 }

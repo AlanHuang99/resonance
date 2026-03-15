@@ -66,7 +66,8 @@ fun HomeScreen(
                         AlbumSection(
                             title = "Recently Played",
                             albums = uiState.recentAlbums,
-                            onAlbumClick = onAlbumClick
+                            onAlbumClick = onAlbumClick,
+                            coverArtUrlBuilder = viewModel::getCoverArtUrl
                         )
                     }
                 }
@@ -77,7 +78,8 @@ fun HomeScreen(
                         AlbumSection(
                             title = "Newest Additions",
                             albums = uiState.newestAlbums,
-                            onAlbumClick = onAlbumClick
+                            onAlbumClick = onAlbumClick,
+                            coverArtUrlBuilder = viewModel::getCoverArtUrl
                         )
                     }
                 }
@@ -88,7 +90,8 @@ fun HomeScreen(
                         AlbumSection(
                             title = "Most Played",
                             albums = uiState.frequentAlbums,
-                            onAlbumClick = onAlbumClick
+                            onAlbumClick = onAlbumClick,
+                            coverArtUrlBuilder = viewModel::getCoverArtUrl
                         )
                     }
                 }
@@ -99,7 +102,8 @@ fun HomeScreen(
                         AlbumSection(
                             title = "Random Picks",
                             albums = uiState.randomAlbums,
-                            onAlbumClick = onAlbumClick
+                            onAlbumClick = onAlbumClick,
+                            coverArtUrlBuilder = viewModel::getCoverArtUrl
                         )
                     }
                 }
@@ -112,7 +116,8 @@ fun HomeScreen(
 private fun AlbumSection(
     title: String,
     albums: List<AlbumItem>,
-    onAlbumClick: (String) -> Unit
+    onAlbumClick: (String) -> Unit,
+    coverArtUrlBuilder: (String) -> String?
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
@@ -128,6 +133,7 @@ private fun AlbumSection(
             items(albums) { album ->
                 AlbumCard(
                     album = album,
+                    coverArtUrl = album.coverArt?.let { coverArtUrlBuilder(it) },
                     onClick = { onAlbumClick(album.id) }
                 )
             }

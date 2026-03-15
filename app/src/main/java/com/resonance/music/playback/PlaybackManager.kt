@@ -1,5 +1,7 @@
 package com.resonance.music.playback
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -8,6 +10,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.SongItem
 import com.resonance.music.data.download.DownloadManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,10 +29,12 @@ enum class RepeatMode { OFF, ALL, ONE }
 
 @Singleton
 class PlaybackManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val apiHelper: SubsonicApiHelper,
     private val downloadManager: DownloadManager
 ) {
     private var player: ExoPlayer? = null
+    private var serviceStarted = false
 
     private val _nowPlaying = MutableStateFlow(NowPlaying())
     val nowPlaying: StateFlow<NowPlaying> = _nowPlaying.asStateFlow()
@@ -44,6 +49,17 @@ class PlaybackManager @Inject constructor(
     val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
 
     private var currentQueueIndex = -1
+
+    // Pending play request — queued until service starts and calls initialize()
+    private var pendingPlay: Pair<List<SongItem>, Int>? = null
+
+    private fun ensureServiceStarted() {
+        if (!serviceStarted) {
+            val intent = Intent(context, PlaybackService::class.java)
+            context.startForegroundService(intent)
+            serviceStarted = true
+        }
+    }
 
     fun initialize(exoPlayer: ExoPlayer) {
         player = exoPlayer
@@ -71,15 +87,35 @@ class PlaybackManager @Inject constructor(
                 }
             }
         })
+
+        // Execute any pending play request
+        pendingPlay?.let { (songs, index) ->
+            pendingPlay = null
+            playSongsInternal(exoPlayer, songs, index)
+        }
     }
 
     fun playSongs(songs: List<SongItem>, startIndex: Int = 0) {
-        val p = player ?: return
+        ensureServiceStarted()
+
+        val p = player
+        if (p != null) {
+            playSongsInternal(p, songs, startIndex)
+        } else {
+            // Service is starting — queue the request
+            pendingPlay = songs to startIndex
+            _queue.value = songs
+            if (startIndex in songs.indices) {
+                _nowPlaying.value = NowPlaying(song = songs[startIndex], isPlaying = false)
+            }
+        }
+    }
+
+    private fun playSongsInternal(p: ExoPlayer, songs: List<SongItem>, startIndex: Int) {
         _queue.value = songs
         currentQueueIndex = startIndex
 
         val mediaItems = songs.mapNotNull { song ->
-            // Prefer cached file, fall back to streaming URL
             val cachedPath = downloadManager.getCachedFilePath(song.id)
             val uri = if (cachedPath != null && File(cachedPath).exists()) {
                 Uri.fromFile(File(cachedPath)).toString()
