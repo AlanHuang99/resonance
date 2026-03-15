@@ -36,10 +36,11 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                val recent = async { musicRepository.getRecentAlbums(10) }
-                val newest = async { musicRepository.getNewestAlbums(10) }
-                val frequent = async { musicRepository.getFrequentAlbums(10) }
-                val random = async { musicRepository.getRandomAlbums(10) }
+                // Each section loads independently — one failure doesn't block the rest
+                val recent = async { runCatching { musicRepository.getRecentAlbums(10) }.getOrDefault(emptyList()) }
+                val newest = async { runCatching { musicRepository.getNewestAlbums(10) }.getOrDefault(emptyList()) }
+                val frequent = async { runCatching { musicRepository.getFrequentAlbums(10) }.getOrDefault(emptyList()) }
+                val random = async { runCatching { musicRepository.getRandomAlbums(10) }.getOrDefault(emptyList()) }
 
                 _uiState.value = HomeUiState(
                     recentAlbums = recent.await(),

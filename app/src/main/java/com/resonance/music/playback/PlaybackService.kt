@@ -1,9 +1,10 @@
 package com.resonance.music.playback
 
 import android.content.Intent
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -29,10 +30,22 @@ class PlaybackService : MediaSessionService() {
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .setUsage(C.USAGE_MEDIA)
                     .build(),
-                true // handleAudioFocus
+                true
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+
+        // Add error listener to prevent unhandled crashes
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("PlaybackService", "Playback error: ${error.message}", error)
+                // Try to skip to next track on error instead of crashing
+                if (exoPlayer.hasNextMediaItem()) {
+                    exoPlayer.seekToNextMediaItem()
+                    exoPlayer.prepare()
+                }
+            }
+        })
 
         player = exoPlayer
         mediaSession = MediaSession.Builder(this, exoPlayer).build()
@@ -44,14 +57,20 @@ class PlaybackService : MediaSessionService() {
         return mediaSession
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Let MediaSessionService handle foreground promotion
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val player = mediaSession?.player
-        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
+        val p = mediaSession?.player
+        if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
             stopSelf()
         }
     }
 
     override fun onDestroy() {
+        playbackManager.onServiceDestroyed()
         mediaSession?.run {
             player.release()
             release()

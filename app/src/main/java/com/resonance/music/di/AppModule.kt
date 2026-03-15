@@ -19,6 +19,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import com.google.gson.GsonBuilder
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -52,11 +53,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSubsonicApi(okHttpClient: OkHttpClient): SubsonicApi {
-        // Placeholder base URL — DynamicBaseUrlInterceptor replaces at runtime
+        val gson = GsonBuilder()
+            .setLenient()
+            .create()
+
         return Retrofit.Builder()
             .baseUrl("http://localhost/")
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(SubsonicApi::class.java)
     }

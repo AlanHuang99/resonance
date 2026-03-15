@@ -14,6 +14,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.resonance.music.data.repository.AuthRepository
+import com.resonance.music.data.repository.MusicRepository
 import com.resonance.music.playback.PlaybackManager
 import com.resonance.music.ui.components.MiniPlayer
 import com.resonance.music.ui.screens.album.AlbumScreen
@@ -44,7 +45,8 @@ object Routes {
 @Composable
 fun ResonanceNavHost(
     authRepository: AuthRepository = hiltViewModel<NavViewModel>().authRepository,
-    playbackManager: PlaybackManager = hiltViewModel<NavViewModel>().playbackManager
+    playbackManager: PlaybackManager = hiltViewModel<NavViewModel>().playbackManager,
+    musicRepository: MusicRepository = hiltViewModel<NavViewModel>().musicRepository
 ) {
     val navController = rememberNavController()
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
@@ -65,9 +67,11 @@ fun ResonanceNavHost(
                     MiniPlayer(
                         nowPlaying = nowPlaying,
                         coverArtUrl = nowPlaying.song?.coverArt?.let {
-                            playbackManager.nowPlaying.value.song?.coverArt
+                            musicRepository.getCoverArtUrl(it)
                         },
-                        onPlayerClick = { navController.navigate(Routes.PLAYER) },
+                        onPlayerClick = {
+                        navController.navigate(Routes.PLAYER) { launchSingleTop = true }
+                    },
                         onPlayPauseClick = { playbackManager.togglePlayPause() },
                         onNextClick = { playbackManager.next() }
                     )
