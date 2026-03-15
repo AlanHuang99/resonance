@@ -1,14 +1,17 @@
 package com.resonance.music.playback
 
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.SongItem
+import com.resonance.music.data.download.DownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,9 +22,12 @@ data class NowPlaying(
     val duration: Long = 0L
 )
 
+enum class RepeatMode { OFF, ALL, ONE }
+
 @Singleton
 class PlaybackManager @Inject constructor(
-    private val apiHelper: SubsonicApiHelper
+    private val apiHelper: SubsonicApiHelper,
+    private val downloadManager: DownloadManager
 ) {
     private var player: ExoPlayer? = null
 
@@ -30,6 +36,12 @@ class PlaybackManager @Inject constructor(
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queue: StateFlow<List<SongItem>> = _queue.asStateFlow()
+
+    private val _shuffleEnabled = MutableStateFlow(false)
+    val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
+
+    private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
+    val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
 
     private var currentQueueIndex = -1
 
@@ -67,9 +79,16 @@ class PlaybackManager @Inject constructor(
         currentQueueIndex = startIndex
 
         val mediaItems = songs.mapNotNull { song ->
-            val url = apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
+            // Prefer cached file, fall back to streaming URL
+            val cachedPath = downloadManager.getCachedFilePath(song.id)
+            val uri = if (cachedPath != null && File(cachedPath).exists()) {
+                Uri.fromFile(File(cachedPath)).toString()
+            } else {
+                apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
+            }
+
             MediaItem.Builder()
-                .setUri(url)
+                .setUri(uri)
                 .setMediaId(song.id)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
@@ -114,6 +133,31 @@ class PlaybackManager @Inject constructor(
 
     fun seekTo(position: Long) {
         player?.seekTo(position)
+    }
+
+    fun toggleShuffle() {
+        val p = player ?: return
+        val newValue = !_shuffleEnabled.value
+        _shuffleEnabled.value = newValue
+        p.shuffleModeEnabled = newValue
+    }
+
+    fun toggleRepeat() {
+        val p = player ?: return
+        _repeatMode.value = when (_repeatMode.value) {
+            RepeatMode.OFF -> {
+                p.repeatMode = Player.REPEAT_MODE_ALL
+                RepeatMode.ALL
+            }
+            RepeatMode.ALL -> {
+                p.repeatMode = Player.REPEAT_MODE_ONE
+                RepeatMode.ONE
+            }
+            RepeatMode.ONE -> {
+                p.repeatMode = Player.REPEAT_MODE_OFF
+                RepeatMode.OFF
+            }
+        }
     }
 
     fun getCurrentPosition(): Long = player?.currentPosition ?: 0L

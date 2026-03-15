@@ -1,6 +1,6 @@
 package com.resonance.music.data.api
 
-import com.resonance.music.data.api.models.*
+import com.resonance.music.data.api.models.SubsonicRoot
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -9,18 +9,18 @@ interface SubsonicApi {
     // --- System ---
 
     @GET("rest/ping")
-    suspend fun ping(): SubsonicResponse<Unit>
+    suspend fun ping(): SubsonicRoot
 
     // --- Browsing ---
 
     @GET("rest/getArtists")
-    suspend fun getArtists(): SubsonicResponse<ArtistsResponse>
+    suspend fun getArtists(): SubsonicRoot
 
     @GET("rest/getArtist")
-    suspend fun getArtist(@Query("id") id: String): SubsonicResponse<ArtistDetailResponse>
+    suspend fun getArtist(@Query("id") id: String): SubsonicRoot
 
     @GET("rest/getAlbum")
-    suspend fun getAlbum(@Query("id") id: String): SubsonicResponse<AlbumResponse>
+    suspend fun getAlbum(@Query("id") id: String): SubsonicRoot
 
     // --- Album Lists ---
 
@@ -29,12 +29,12 @@ interface SubsonicApi {
         @Query("type") type: String,
         @Query("size") size: Int = 20,
         @Query("offset") offset: Int = 0
-    ): SubsonicResponse<AlbumListResponse>
+    ): SubsonicRoot
 
     @GET("rest/getRandomSongs")
     suspend fun getRandomSongs(
         @Query("size") size: Int = 20
-    ): SubsonicResponse<RandomSongsResponse>
+    ): SubsonicRoot
 
     // --- Search ---
 
@@ -44,24 +44,24 @@ interface SubsonicApi {
         @Query("artistCount") artistCount: Int = 10,
         @Query("albumCount") albumCount: Int = 10,
         @Query("songCount") songCount: Int = 20
-    ): SubsonicResponse<SearchResponse>
+    ): SubsonicRoot
 
     // --- Playlists ---
 
     @GET("rest/getPlaylists")
-    suspend fun getPlaylists(): SubsonicResponse<PlaylistsResponse>
+    suspend fun getPlaylists(): SubsonicRoot
 
     @GET("rest/getPlaylist")
-    suspend fun getPlaylist(@Query("id") id: String): SubsonicResponse<PlaylistDetailResponse>
+    suspend fun getPlaylist(@Query("id") id: String): SubsonicRoot
 
     @GET("rest/createPlaylist")
     suspend fun createPlaylist(
         @Query("name") name: String,
         @Query("songId") songIds: List<String>? = null
-    ): SubsonicResponse<Unit>
+    ): SubsonicRoot
 
     @GET("rest/deletePlaylist")
-    suspend fun deletePlaylist(@Query("id") id: String): SubsonicResponse<Unit>
+    suspend fun deletePlaylist(@Query("id") id: String): SubsonicRoot
 
     // --- Annotation ---
 
@@ -70,25 +70,25 @@ interface SubsonicApi {
         @Query("id") id: String? = null,
         @Query("albumId") albumId: String? = null,
         @Query("artistId") artistId: String? = null
-    ): SubsonicResponse<Unit>
+    ): SubsonicRoot
 
     @GET("rest/unstar")
     suspend fun unstar(
         @Query("id") id: String? = null,
         @Query("albumId") albumId: String? = null,
         @Query("artistId") artistId: String? = null
-    ): SubsonicResponse<Unit>
+    ): SubsonicRoot
 
     @GET("rest/scrobble")
     suspend fun scrobble(
         @Query("id") id: String,
         @Query("submission") submission: Boolean = true
-    ): SubsonicResponse<Unit>
+    ): SubsonicRoot
 
     // --- Starred ---
 
     @GET("rest/getStarred2")
-    suspend fun getStarred(): SubsonicResponse<StarredResponse>
+    suspend fun getStarred(): SubsonicRoot
 
     // --- Lyrics ---
 
@@ -96,5 +96,10 @@ interface SubsonicApi {
     suspend fun getLyrics(
         @Query("artist") artist: String? = null,
         @Query("title") title: String? = null
-    ): SubsonicResponse<LyricsResponse>
+    ): SubsonicRoot
+
+    @GET("rest/getLyricsBySongId")
+    suspend fun getLyricsBySongId(
+        @Query("id") id: String
+    ): SubsonicRoot
 }

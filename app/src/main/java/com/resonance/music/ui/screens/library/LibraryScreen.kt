@@ -5,12 +5,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.resonance.music.ui.components.AlbumListItem
+import com.resonance.music.ui.components.SongListItem
 
 enum class LibraryTab { Artists, Albums, Playlists, Favorites }
 
@@ -19,9 +24,21 @@ enum class LibraryTab { Artists, Albums, Playlists, Favorites }
 fun LibraryScreen(
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String) -> Unit,
-    onPlaylistClick: (String) -> Unit
+    onPlaylistClick: (String) -> Unit,
+    viewModel: LibraryViewModel = hiltViewModel()
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.Artists) }
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Load data when tab changes
+    LaunchedEffect(selectedTab) {
+        when (selectedTab) {
+            LibraryTab.Artists -> viewModel.loadArtists()
+            LibraryTab.Albums -> viewModel.loadAlbums()
+            LibraryTab.Playlists -> viewModel.loadPlaylists()
+            LibraryTab.Favorites -> viewModel.loadFavorites()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -29,7 +46,6 @@ fun LibraryScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Tab row
             TabRow(selectedTabIndex = selectedTab.ordinal) {
                 LibraryTab.entries.forEach { tab ->
                     Tab(
@@ -40,109 +56,182 @@ fun LibraryScreen(
                 }
             }
 
-            // Content based on selected tab
-            when (selectedTab) {
-                LibraryTab.Artists -> ArtistsTab(onArtistClick)
-                LibraryTab.Albums -> AlbumsTab(onAlbumClick)
-                LibraryTab.Playlists -> PlaylistsTab(onPlaylistClick)
-                LibraryTab.Favorites -> FavoritesTab(onAlbumClick)
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                when (selectedTab) {
+                    LibraryTab.Artists -> ArtistsTab(uiState, onArtistClick)
+                    LibraryTab.Albums -> AlbumsTab(uiState, onAlbumClick)
+                    LibraryTab.Playlists -> PlaylistsTab(uiState, onPlaylistClick)
+                    LibraryTab.Favorites -> FavoritesTab(uiState, onAlbumClick, onArtistClick, viewModel)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ArtistsTab(onArtistClick: (String) -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Artists", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Your artist library will appear here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun ArtistsTab(uiState: LibraryUiState, onArtistClick: (String) -> Unit) {
+    if (uiState.artists.isEmpty()) {
+        EmptyState(Icons.Default.Person, "Artists", "No artists found")
+    } else {
+        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+            items(uiState.artists) { artist ->
+                ListItem(
+                    headlineContent = {
+                        Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    supportingContent = {
+                        artist.albumCount?.let { Text("$it albums") }
+                    },
+                    leadingContent = {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { onArtistClick(artist.id) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun AlbumsTab(onAlbumClick: (String) -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.Album,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Albums", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Your album library will appear here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun AlbumsTab(uiState: LibraryUiState, onAlbumClick: (String) -> Unit) {
+    if (uiState.albums.isEmpty()) {
+        EmptyState(Icons.Default.Album, "Albums", "No albums found")
+    } else {
+        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+            items(uiState.albums) { album ->
+                AlbumListItem(
+                    album = album,
+                    coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
+                    onClick = { onAlbumClick(album.id) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PlaylistsTab(onPlaylistClick: (String) -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.QueueMusic,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Playlists", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Your playlists will appear here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun PlaylistsTab(uiState: LibraryUiState, onPlaylistClick: (String) -> Unit) {
+    if (uiState.playlists.isEmpty()) {
+        EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "Playlists", "No playlists found")
+    } else {
+        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+            items(uiState.playlists) { playlist ->
+                ListItem(
+                    headlineContent = {
+                        Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    supportingContent = {
+                        val details = listOfNotNull(
+                            playlist.songCount?.let { "$it songs" },
+                            playlist.owner
+                        ).joinToString(" \u2022 ")
+                        if (details.isNotEmpty()) Text(details)
+                    },
+                    leadingContent = {
+                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { onPlaylistClick(playlist.id) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun FavoritesTab(onAlbumClick: (String) -> Unit) {
+private fun FavoritesTab(
+    uiState: LibraryUiState,
+    onAlbumClick: (String) -> Unit,
+    onArtistClick: (String) -> Unit,
+    viewModel: LibraryViewModel
+) {
+    val hasContent = uiState.starredArtists.isNotEmpty() ||
+            uiState.starredAlbums.isNotEmpty() ||
+            uiState.starredSongs.isNotEmpty()
+
+    if (!hasContent) {
+        EmptyState(Icons.Default.Favorite, "Favorites", "No favorites yet")
+    } else {
+        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+            if (uiState.starredArtists.isNotEmpty()) {
+                item {
+                    Text(
+                        "Artists",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                items(uiState.starredArtists) { artist ->
+                    ListItem(
+                        headlineContent = { Text(artist.name) },
+                        leadingContent = { Icon(Icons.Default.Person, contentDescription = null) },
+                        modifier = Modifier.clickable { onArtistClick(artist.id) }
+                    )
+                }
+            }
+
+            if (uiState.starredAlbums.isNotEmpty()) {
+                item {
+                    Text(
+                        "Albums",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                items(uiState.starredAlbums) { album ->
+                    AlbumListItem(
+                        album = album,
+                        coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
+                        onClick = { onAlbumClick(album.id) }
+                    )
+                }
+            }
+
+            if (uiState.starredSongs.isNotEmpty()) {
+                item {
+                    Text(
+                        "Songs",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                items(uiState.starredSongs) { song ->
+                    SongListItem(
+                        song = song,
+                        onClick = { viewModel.playStarredSong(song) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                Icons.Default.Favorite,
+                icon,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Favorites", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Your favorites will appear here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

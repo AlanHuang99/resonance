@@ -21,8 +21,10 @@ import com.resonance.music.ui.screens.artist.ArtistScreen
 import com.resonance.music.ui.screens.home.HomeScreen
 import com.resonance.music.ui.screens.library.LibraryScreen
 import com.resonance.music.ui.screens.login.LoginScreen
+import com.resonance.music.ui.screens.lyrics.LyricsScreen
 import com.resonance.music.ui.screens.player.PlayerScreen
 import com.resonance.music.ui.screens.search.SearchScreen
+import com.resonance.music.ui.screens.settings.SettingsScreen
 
 object Routes {
     const val LOGIN = "login"
@@ -30,6 +32,8 @@ object Routes {
     const val LIBRARY = "library"
     const val SEARCH = "search"
     const val PLAYER = "player"
+    const val LYRICS = "lyrics"
+    const val SETTINGS = "settings"
     const val ALBUM = "album/{albumId}"
     const val ARTIST = "artist/{artistId}"
 
@@ -49,7 +53,8 @@ fun ResonanceNavHost(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.LIBRARY)
-    val showMiniPlayer = nowPlaying.song != null && currentRoute != Routes.PLAYER
+    val showMiniPlayer = nowPlaying.song != null &&
+            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN)
 
     val startDestination = if (isLoggedIn) Routes.HOME else Routes.LOGIN
 
@@ -57,12 +62,11 @@ fun ResonanceNavHost(
         bottomBar = {
             Column {
                 if (showMiniPlayer) {
-                    val coverArtUrl = nowPlaying.song?.coverArt?.let {
-                        playbackManager.nowPlaying.value.song?.coverArt
-                    }
                     MiniPlayer(
                         nowPlaying = nowPlaying,
-                        coverArtUrl = coverArtUrl,
+                        coverArtUrl = nowPlaying.song?.coverArt?.let {
+                            playbackManager.nowPlaying.value.song?.coverArt
+                        },
                         onPlayerClick = { navController.navigate(Routes.PLAYER) },
                         onPlayPauseClick = { playbackManager.togglePlayPause() },
                         onNextClick = { playbackManager.next() }
@@ -115,7 +119,7 @@ fun ResonanceNavHost(
                 HomeScreen(
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
                     onSearchClick = { navController.navigate(Routes.SEARCH) },
-                    onSettingsClick = { /* TODO: settings */ }
+                    onSettingsClick = { navController.navigate(Routes.SETTINGS) }
                 )
             }
 
@@ -123,7 +127,7 @@ fun ResonanceNavHost(
                 LibraryScreen(
                     onArtistClick = { navController.navigate(Routes.artist(it)) },
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
-                    onPlaylistClick = { /* TODO */ }
+                    onPlaylistClick = { /* TODO: playlist detail screen */ }
                 )
             }
 
@@ -137,7 +141,25 @@ fun ResonanceNavHost(
 
             composable(Routes.PLAYER) {
                 PlayerScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onLyricsClick = { navController.navigate(Routes.LYRICS) }
+                )
+            }
+
+            composable(Routes.LYRICS) {
+                LyricsScreen(
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onLogout = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
                 )
             }
 

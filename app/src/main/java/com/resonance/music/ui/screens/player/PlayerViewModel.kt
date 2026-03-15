@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.repository.MusicRepository
 import com.resonance.music.playback.PlaybackManager
+import com.resonance.music.playback.RepeatMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,9 @@ data class PlayerUiState(
     val progress: Float = 0f,
     val currentPosition: Long = 0L,
     val duration: Long = 0L,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val shuffleEnabled: Boolean = false,
+    val repeatMode: RepeatMode = RepeatMode.OFF
 )
 
 @HiltViewModel
@@ -35,7 +38,6 @@ class PlayerViewModel @Inject constructor(
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     init {
-        // Observe now playing state
         viewModelScope.launch {
             playbackManager.nowPlaying.collect { nowPlaying ->
                 val song = nowPlaying.song
@@ -51,7 +53,18 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
-        // Position update loop
+        viewModelScope.launch {
+            playbackManager.shuffleEnabled.collect { shuffle ->
+                _uiState.value = _uiState.value.copy(shuffleEnabled = shuffle)
+            }
+        }
+
+        viewModelScope.launch {
+            playbackManager.repeatMode.collect { repeat ->
+                _uiState.value = _uiState.value.copy(repeatMode = repeat)
+            }
+        }
+
         viewModelScope.launch {
             while (isActive) {
                 val position = playbackManager.getCurrentPosition()
@@ -68,6 +81,8 @@ class PlayerViewModel @Inject constructor(
     fun togglePlayPause() = playbackManager.togglePlayPause()
     fun next() = playbackManager.next()
     fun previous() = playbackManager.previous()
+    fun toggleShuffle() = playbackManager.toggleShuffle()
+    fun toggleRepeat() = playbackManager.toggleRepeat()
 
     fun onSeek(progress: Float) {
         val duration = _uiState.value.duration

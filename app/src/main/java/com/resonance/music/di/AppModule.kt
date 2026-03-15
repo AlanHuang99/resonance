@@ -2,6 +2,7 @@ package com.resonance.music.di
 
 import android.content.Context
 import androidx.room.Room
+import com.resonance.music.data.api.DynamicBaseUrlInterceptor
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.SubsonicAuthInterceptor
@@ -30,15 +31,17 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(authRepository: AuthRepository): OkHttpClient {
-        val authInterceptor = SubsonicAuthInterceptor {
-            runBlocking { authRepository.getCredentials() }
-        }
+        val credentialsProvider = { runBlocking { authRepository.getCredentials() } }
+
+        val authInterceptor = SubsonicAuthInterceptor(credentialsProvider)
+        val dynamicBaseUrlInterceptor = DynamicBaseUrlInterceptor(credentialsProvider)
 
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(dynamicBaseUrlInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -48,15 +51,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSubsonicApi(okHttpClient: OkHttpClient, authRepository: AuthRepository): SubsonicApi {
-        // Use a placeholder base URL; the actual URL comes from credentials
-        // We'll need a dynamic base URL interceptor
-        val baseUrl = runBlocking {
-            authRepository.getCredentials()?.serverUrl?.trimEnd('/') ?: "http://localhost"
-        }
-
+    fun provideSubsonicApi(okHttpClient: OkHttpClient): SubsonicApi {
+        // Placeholder base URL — DynamicBaseUrlInterceptor replaces at runtime
         return Retrofit.Builder()
-            .baseUrl("$baseUrl/")
+            .baseUrl("http://localhost/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

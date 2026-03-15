@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
+import com.resonance.music.playback.RepeatMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +22,7 @@ import coil.compose.AsyncImage
 @Composable
 fun PlayerScreen(
     onBackClick: () -> Unit,
+    onLyricsClick: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -126,8 +129,13 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { /* shuffle */ }) {
-                    Icon(Icons.Default.Shuffle, contentDescription = "Shuffle")
+                IconButton(onClick = viewModel::toggleShuffle) {
+                    Icon(
+                        Icons.Default.Shuffle,
+                        contentDescription = "Shuffle",
+                        tint = if (uiState.shuffleEnabled) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 IconButton(onClick = viewModel::previous) {
@@ -157,8 +165,16 @@ fun PlayerScreen(
                     )
                 }
 
-                IconButton(onClick = { /* repeat */ }) {
-                    Icon(Icons.Default.Repeat, contentDescription = "Repeat")
+                IconButton(onClick = viewModel::toggleRepeat) {
+                    Icon(
+                        imageVector = when (uiState.repeatMode) {
+                            RepeatMode.ONE -> Icons.Default.RepeatOne
+                            else -> Icons.Default.Repeat
+                        },
+                        contentDescription = "Repeat",
+                        tint = if (uiState.repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
@@ -174,8 +190,11 @@ fun PlayerScreen(
                         tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                IconButton(onClick = onLyricsClick) {
+                    Icon(Icons.Default.Lyrics, contentDescription = "Lyrics")
+                }
                 IconButton(onClick = { /* show queue */ }) {
-                    Icon(Icons.Default.QueueMusic, contentDescription = "Queue")
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
             }
         }

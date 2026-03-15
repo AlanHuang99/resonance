@@ -3,6 +3,8 @@ package com.resonance.music.ui.screens.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.api.SubsonicApi
+import com.resonance.music.data.api.SubsonicAuthInterceptor
+import com.resonance.music.data.api.ServerCredentials
 import com.resonance.music.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,26 +56,23 @@ class LoginViewModel @Inject constructor(
             _uiState.value = state.copy(isLoading = true, error = null)
 
             try {
-                // Save credentials first so auth interceptor can use them for ping
                 val serverUrl = state.serverUrl.trimEnd('/')
-                authRepository.saveCredentials(serverUrl, state.username, state.password)
 
-                // Test connection with a simple ping
+                // Test connection with a direct ping before saving
                 val testApi = createTestApi(serverUrl, state.username, state.password)
                 val response = testApi.ping()
 
-                if (response.subsonicResponse.status == "ok") {
+                if (response.response.isOk) {
+                    authRepository.saveCredentials(serverUrl, state.username, state.password)
                     _uiState.value = _uiState.value.copy(isLoading = false, loginSuccess = true)
                 } else {
-                    val error = response.subsonicResponse.error
-                    authRepository.logout()
+                    val error = response.response.error
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error?.message ?: "Authentication failed"
                     )
                 }
             } catch (e: Exception) {
-                authRepository.logout()
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "Connection failed: ${e.localizedMessage}"
@@ -83,8 +82,8 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun createTestApi(serverUrl: String, username: String, password: String): SubsonicApi {
-        val interceptor = com.resonance.music.data.api.SubsonicAuthInterceptor {
-            com.resonance.music.data.api.ServerCredentials(serverUrl, username, password)
+        val interceptor = SubsonicAuthInterceptor {
+            ServerCredentials(serverUrl, username, password)
         }
 
         val client = OkHttpClient.Builder()
