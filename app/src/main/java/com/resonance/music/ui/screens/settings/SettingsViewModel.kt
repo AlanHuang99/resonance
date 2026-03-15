@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.db.ResonanceDatabase
 import com.resonance.music.data.repository.AuthRepository
+import com.resonance.music.ui.theme.AppTheme
+import com.resonance.music.ui.theme.ThemeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,14 +29,16 @@ data class SettingsUiState(
     val username: String = "",
     val gaplessPlayback: Boolean = true,
     val scrobbleEnabled: Boolean = true,
-    val offlineSongCount: Int = 0
+    val offlineSongCount: Int = 0,
+    val currentTheme: AppTheme = AppTheme.NEON_PULSE
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
-    private val database: ResonanceDatabase
+    private val database: ResonanceDatabase,
+    private val themeRepository: ThemeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -49,14 +53,23 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val creds = authRepository.getCredentials()
             val prefs = context.settingsDataStore.data.first()
+            val theme = themeRepository.currentTheme.first()
 
             _uiState.value = SettingsUiState(
                 serverUrl = creds?.serverUrl ?: "",
                 username = creds?.username ?: "",
                 gaplessPlayback = prefs[Keys.GAPLESS] ?: true,
                 scrobbleEnabled = prefs[Keys.SCROBBLE] ?: true,
-                offlineSongCount = countOfflineSongs()
+                offlineSongCount = countOfflineSongs(),
+                currentTheme = theme
             )
+        }
+    }
+
+    fun setTheme(theme: AppTheme) {
+        _uiState.value = _uiState.value.copy(currentTheme = theme)
+        viewModelScope.launch {
+            themeRepository.setTheme(theme)
         }
     }
 
@@ -82,15 +95,11 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCache() {
         viewModelScope.launch {
-            // Delete cached audio files
             val cacheDir = File(context.filesDir, "offline_songs")
             if (cacheDir.exists()) {
                 cacheDir.deleteRecursively()
             }
-
-            // Clear database
             database.clearAllTables()
-
             _uiState.value = _uiState.value.copy(offlineSongCount = 0)
         }
     }

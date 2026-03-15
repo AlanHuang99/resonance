@@ -4,8 +4,54 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Music note icon as launcher foreground -->
+
+    <!-- Resonance — futuristic sound wave / equalizer pulse -->
+    <!-- Bars of varying heights forming a symmetric waveform, center peak -->
+
+    <!-- Bar 1 (leftmost, short) -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.5"
+        android:pathData="M24,48 Q24,46 26,46 L27,46 Q29,46 29,48 L29,60 Q29,62 27,62 L26,62 Q24,62 24,60 Z"/>
+
+    <!-- Bar 2 -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.7"
+        android:pathData="M32,42 Q32,40 34,40 L35,40 Q37,40 37,42 L37,66 Q37,68 35,68 L34,68 Q32,68 32,66 Z"/>
+
+    <!-- Bar 3 -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.85"
+        android:pathData="M40,35 Q40,33 42,33 L43,33 Q45,33 45,35 L45,73 Q45,75 43,75 L42,75 Q40,75 40,73 Z"/>
+
+    <!-- Bar 4 (center peak — white/bright) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,26 L54,62 C52.4,61.4 50.7,61 49,61 C43.5,61 39,64.6 39,69 C39,73.4 43.5,77 49,77 C54.5,77 59,73.4 59,69 L59,40 L69,37 L69,31 Z"/>
+        android:pathData="M48,27 Q48,25 50,25 L51,25 Q53,25 53,27 L53,81 Q53,83 51,83 L50,83 Q48,83 48,81 Z"/>
+
+    <!-- Bar 5 (mirror of 3) -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.85"
+        android:pathData="M56,32 Q56,30 58,30 L59,30 Q61,30 61,32 L61,76 Q61,78 59,78 L58,78 Q56,78 56,76 Z"/>
+
+    <!-- Bar 6 (mirror of 2) -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.7"
+        android:pathData="M64,39 Q64,37 66,37 L67,37 Q69,37 69,39 L69,69 Q69,71 67,71 L66,71 Q64,71 64,69 Z"/>
+
+    <!-- Bar 7 (rightmost, mirror of 1) -->
+    <path
+        android:fillColor="#00F0FF"
+        android:fillAlpha="0.5"
+        android:pathData="M72,45 Q72,43 74,43 L75,43 Q77,43 77,45 L77,63 Q77,65 75,65 L74,65 Q72,65 72,63 Z"/>
+
+    <!-- Magenta accent dot at bottom center -->
+    <path
+        android:fillColor="#FF00E5"
+        android:pathData="M49,88 A3,3 0 1,1 55,88 A3,3 0 1,1 49,88 Z"/>
+
 </vector>
