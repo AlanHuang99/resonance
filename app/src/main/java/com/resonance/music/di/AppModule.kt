@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.resonance.music.data.api.DynamicBaseUrlInterceptor
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
+import com.resonance.music.data.api.ServerCredentials
 import com.resonance.music.data.api.SubsonicAuthInterceptor
 import com.resonance.music.data.db.ResonanceDatabase
 import com.resonance.music.data.db.dao.AlbumDao
@@ -32,7 +33,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(authRepository: AuthRepository): OkHttpClient {
-        val credentialsProvider = { runBlocking { authRepository.getCredentials() } }
+        // Cache credentials to avoid repeated blocking calls. The interceptors run on
+        // OkHttp's I/O threads where a brief runBlocking is acceptable and unavoidable
+        // (interceptors are synchronous). We cache after the first fetch so subsequent
+        // requests never block.
+        var cached: ServerCredentials? = null
+        val credentialsProvider = {
+            cached ?: runBlocking { authRepository.getCredentials() }.also { cached = it }
+        }
 
         val authInterceptor = SubsonicAuthInterceptor(credentialsProvider)
         val dynamicBaseUrlInterceptor = DynamicBaseUrlInterceptor(credentialsProvider)
@@ -68,8 +76,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSubsonicApiHelper(authRepository: AuthRepository): SubsonicApiHelper {
+        var cached: ServerCredentials? = null
         return SubsonicApiHelper {
-            runBlocking { authRepository.getCredentials() }
+            cached ?: runBlocking { authRepository.getCredentials() }.also { cached = it }
         }
     }
 

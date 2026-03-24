@@ -1,16 +1,40 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-/app/build
-/app/release
+# Built artifacts
 *.apk
 *.aab
+*.dex
+*.class
+/build/
+/app/build/
+/app/release/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# IDE
+*.iml
+.idea/
+*.swp
+*~
+.DS_Store
+*.code-workspace
+
+# Local config
+local.properties
+/captures/
+
+# Native
+.externalNativeBuild/
+.cxx/
+
+# Signing
 *.jks
 *.keystore
+signing.properties
+
+# Misc
+*.log
+*.tmp
+*.bak

@@ -81,7 +81,7 @@ private fun ArtistsTab(uiState: LibraryUiState, onArtistClick: (String) -> Unit)
         EmptyState(Icons.Default.Person, "Artists", "No artists found")
     } else {
         LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
-            items(uiState.artists) { artist ->
+            items(uiState.artists, key = { it.id }) { artist ->
                 ListItem(
                     headlineContent = {
                         Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -105,7 +105,7 @@ private fun AlbumsTab(uiState: LibraryUiState, onAlbumClick: (String) -> Unit) {
         EmptyState(Icons.Default.Album, "Albums", "No albums found")
     } else {
         LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
-            items(uiState.albums) { album ->
+            items(uiState.albums, key = { it.id }) { album ->
                 AlbumListItem(
                     album = album,
                     coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
@@ -122,7 +122,7 @@ private fun PlaylistsTab(uiState: LibraryUiState, onPlaylistClick: (String) -> U
         EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "Playlists", "No playlists found")
     } else {
         LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
-            items(uiState.playlists) { playlist ->
+            items(uiState.playlists, key = { it.id }) { playlist ->
                 ListItem(
                     headlineContent = {
                         Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -167,7 +167,7 @@ private fun FavoritesTab(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                items(uiState.starredArtists) { artist ->
+                items(uiState.starredArtists, key = { it.id }) { artist ->
                     ListItem(
                         headlineContent = { Text(artist.name) },
                         leadingContent = { Icon(Icons.Default.Person, contentDescription = null) },
@@ -184,7 +184,7 @@ private fun FavoritesTab(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                items(uiState.starredAlbums) { album ->
+                items(uiState.starredAlbums, key = { it.id }) { album ->
                     AlbumListItem(
                         album = album,
                         coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
@@ -201,7 +201,7 @@ private fun FavoritesTab(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                items(uiState.starredSongs) { song ->
+                items(uiState.starredSongs, key = { it.id }) { song ->
                     SongListItem(
                         song = song,
                         onClick = { viewModel.playStarredSong(song) }

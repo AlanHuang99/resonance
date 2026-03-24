@@ -28,6 +28,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Stable reference — avoids new lambda allocation on every recomposition
+    val coverArtUrlBuilder = remember<(String) -> String?> { { viewModel.getCoverArtUrl(it) } }
 
     LaunchedEffect(Unit) {
         viewModel.loadHome()
@@ -55,6 +57,25 @@ fun HomeScreen(
             ) {
                 CircularProgressIndicator()
             }
+        } else if (uiState.error != null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Failed to load", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        uiState.error ?: "Unknown error",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FilledTonalButton(onClick = { viewModel.loadHome() }) {
+                        Text("Retry")
+                    }
+                }
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -62,48 +83,48 @@ fun HomeScreen(
             ) {
                 // Recently Played
                 if (uiState.recentAlbums.isNotEmpty()) {
-                    item {
+                    item(key = "recent") {
                         AlbumSection(
                             title = "Recently Played",
                             albums = uiState.recentAlbums,
                             onAlbumClick = onAlbumClick,
-                            coverArtUrlBuilder = viewModel::getCoverArtUrl
+                            coverArtUrlBuilder = coverArtUrlBuilder
                         )
                     }
                 }
 
                 // Newest Additions
                 if (uiState.newestAlbums.isNotEmpty()) {
-                    item {
+                    item(key = "newest") {
                         AlbumSection(
                             title = "Newest Additions",
                             albums = uiState.newestAlbums,
                             onAlbumClick = onAlbumClick,
-                            coverArtUrlBuilder = viewModel::getCoverArtUrl
+                            coverArtUrlBuilder = coverArtUrlBuilder
                         )
                     }
                 }
 
                 // Most Played
                 if (uiState.frequentAlbums.isNotEmpty()) {
-                    item {
+                    item(key = "frequent") {
                         AlbumSection(
                             title = "Most Played",
                             albums = uiState.frequentAlbums,
                             onAlbumClick = onAlbumClick,
-                            coverArtUrlBuilder = viewModel::getCoverArtUrl
+                            coverArtUrlBuilder = coverArtUrlBuilder
                         )
                     }
                 }
 
                 // Random picks
                 if (uiState.randomAlbums.isNotEmpty()) {
-                    item {
+                    item(key = "random") {
                         AlbumSection(
                             title = "Random Picks",
                             albums = uiState.randomAlbums,
                             onAlbumClick = onAlbumClick,
-                            coverArtUrlBuilder = viewModel::getCoverArtUrl
+                            coverArtUrlBuilder = coverArtUrlBuilder
                         )
                     }
                 }
@@ -130,7 +151,7 @@ private fun AlbumSection(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(albums) { album ->
+            items(albums, key = { it.id }) { album ->
                 AlbumCard(
                     album = album,
                     coverArtUrl = album.coverArt?.let { coverArtUrlBuilder(it) },

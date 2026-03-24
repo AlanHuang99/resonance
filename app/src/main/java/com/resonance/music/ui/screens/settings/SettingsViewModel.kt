@@ -9,16 +9,19 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.db.ResonanceDatabase
+import com.resonance.music.data.download.DownloadManager
 import com.resonance.music.data.repository.AuthRepository
 import com.resonance.music.ui.theme.AppTheme
 import com.resonance.music.ui.theme.ThemeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -38,7 +41,8 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val database: ResonanceDatabase,
-    private val themeRepository: ThemeRepository
+    private val themeRepository: ThemeRepository,
+    private val downloadManager: DownloadManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -55,14 +59,19 @@ class SettingsViewModel @Inject constructor(
             val prefs = context.settingsDataStore.data.first()
             val theme = themeRepository.currentTheme.first()
 
+            // Show settings immediately, count files in background
             _uiState.value = SettingsUiState(
                 serverUrl = creds?.serverUrl ?: "",
                 username = creds?.username ?: "",
                 gaplessPlayback = prefs[Keys.GAPLESS] ?: true,
                 scrobbleEnabled = prefs[Keys.SCROBBLE] ?: true,
-                offlineSongCount = countOfflineSongs(),
+                offlineSongCount = 0,
                 currentTheme = theme
             )
+
+            // File I/O runs on IO dispatcher to avoid blocking
+            val count = withContext(Dispatchers.IO) { countOfflineSongs() }
+            _uiState.value = _uiState.value.copy(offlineSongCount = count)
         }
     }
 
@@ -95,11 +104,14 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCache() {
         viewModelScope.launch {
-            val cacheDir = File(context.filesDir, "offline_songs")
-            if (cacheDir.exists()) {
-                cacheDir.deleteRecursively()
+            withContext(Dispatchers.IO) {
+                val cacheDir = File(context.filesDir, "offline_songs")
+                if (cacheDir.exists()) {
+                    cacheDir.deleteRecursively()
+                }
+                database.clearAllTables()
+                downloadManager.invalidateFileCache()
             }
-            database.clearAllTables()
             _uiState.value = _uiState.value.copy(offlineSongCount = 0)
         }
     }

@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,6 +42,21 @@ class DownloadManager @Inject constructor(
 
     private val offlineDir: File
         get() = File(context.filesDir, "offline_songs").also { it.mkdirs() }
+
+    // In-memory cache: songId -> absolute file path. Avoids repeated listFiles() I/O.
+    private val fileCache = ConcurrentHashMap<String, String>()
+    @Volatile private var fileCacheInitialized = false
+
+    private fun ensureFileCache() {
+        if (fileCacheInitialized) return
+        synchronized(this) {
+            if (fileCacheInitialized) return
+            offlineDir.listFiles()?.forEach { file ->
+                fileCache[file.nameWithoutExtension] = file.absolutePath
+            }
+            fileCacheInitialized = true
+        }
+    }
 
     suspend fun downloadSong(song: SongItem) {
         val songId = song.id
@@ -122,6 +138,9 @@ class DownloadManager @Inject constructor(
                 )
                 songDao.upsertSong(cachedSong)
 
+                // Update in-memory cache
+                fileCache[songId] = file.absolutePath
+
                 _downloads.value = _downloads.value + (songId to DownloadProgress(
                     songId = songId,
                     songTitle = song.title,
@@ -141,23 +160,43 @@ class DownloadManager @Inject constructor(
 
     suspend fun removeCachedSong(songId: String) {
         withContext(Dispatchers.IO) {
-            // Find and delete the file
-            offlineDir.listFiles()?.firstOrNull { it.nameWithoutExtension == songId }?.delete()
+            val path = fileCache.remove(songId)
+            if (path != null) {
+                File(path).delete()
+            } else {
+                // Fallback: scan directory
+                offlineDir.listFiles()?.firstOrNull { it.nameWithoutExtension == songId }?.delete()
+            }
             songDao.updateCachedPath(songId, null)
             _downloads.value = _downloads.value - songId
         }
     }
 
     fun isSongCached(songId: String): Boolean {
-        return offlineDir.listFiles()?.any { it.nameWithoutExtension == songId } == true
+        ensureFileCache()
+        val path = fileCache[songId] ?: return false
+        return File(path).exists()
     }
 
     fun getCachedFilePath(songId: String): String? {
-        return offlineDir.listFiles()?.firstOrNull { it.nameWithoutExtension == songId }?.absolutePath
+        ensureFileCache()
+        val path = fileCache[songId] ?: return null
+        return if (File(path).exists()) path else {
+            fileCache.remove(songId)
+            null
+        }
     }
 
     fun clearCompletedDownloads() {
         _downloads.value = _downloads.value.filter { it.value.status != DownloadStatus.COMPLETED }
+    }
+
+    /** Call after deleting the offline_songs directory to reset the file cache. */
+    fun invalidateFileCache() {
+        synchronized(this) {
+            fileCache.clear()
+            fileCacheInitialized = false
+        }
     }
 
     private fun markFailed(songId: String, title: String) {

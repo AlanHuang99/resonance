@@ -28,10 +28,13 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Lint
+        run: ./gradlew lintDebug
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Upload debug APK artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: resonance-debug
@@ -41,7 +44,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: ./gradlew assembleRelease
 
-      - name: Upload release APK artifact
+      - name: Upload release APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:

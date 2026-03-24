@@ -54,8 +54,12 @@ class PlaybackManager @Inject constructor(
 
     private var currentQueueIndex = -1
     private var pendingPlay: Pair<List<SongItem>, Int>? = null
+    private var positionUpdateRunnable: Runnable? = null
 
     private fun ensureServiceStarted() {
+        // Only start the service if it's not already running.
+        // The player being non-null means the service's onCreate() has completed.
+        if (player != null) return
         if (!serviceStarted) {
             try {
                 val intent = Intent(context, PlaybackService::class.java)
@@ -72,15 +76,17 @@ class PlaybackManager @Inject constructor(
         exoPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _nowPlaying.value = _nowPlaying.value.copy(isPlaying = isPlaying)
+                if (isPlaying) startPositionUpdates() else stopPositionUpdates()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 try {
                     val index = exoPlayer.currentMediaItemIndex
-                    if (index in _queue.value.indices) {
+                    val q = _queue.value
+                    if (index in q.indices) {
                         currentQueueIndex = index
                         _nowPlaying.value = _nowPlaying.value.copy(
-                            song = _queue.value[index],
+                            song = q[index],
                             duration = if (exoPlayer.duration > 0) exoPlayer.duration else 0L
                         )
                     }
@@ -98,6 +104,44 @@ class PlaybackManager @Inject constructor(
             }
         })
 
+        // If we have a persisted queue & song, restore it on the new player
+        val currentNow = _nowPlaying.value
+        val currentQueue = _queue.value
+        if (currentNow.song != null && currentQueue.isNotEmpty()) {
+            // Re-attach queue to the new player so playback can resume
+            runOnMainThread {
+                try {
+                    val mediaItems = currentQueue.mapNotNull { song ->
+                        val cachedPath = downloadManager.getCachedFilePath(song.id)
+                        val uri = if (cachedPath != null && File(cachedPath).exists()) {
+                            Uri.fromFile(File(cachedPath)).toString()
+                        } else {
+                            apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
+                        }
+                        MediaItem.Builder()
+                            .setUri(uri)
+                            .setMediaId(song.id)
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(song.title)
+                                    .setArtist(song.artist)
+                                    .setAlbumTitle(song.album)
+                                    .build()
+                            )
+                            .build()
+                    }
+                    if (mediaItems.isNotEmpty()) {
+                        val idx = currentQueueIndex.coerceIn(0, mediaItems.size - 1)
+                        exoPlayer.setMediaItems(mediaItems, idx, currentNow.position)
+                        exoPlayer.prepare()
+                        // Don't auto-play — user sees the mini player and can tap play
+                    }
+                } catch (e: Exception) {
+                    Log.e("PlaybackManager", "Error restoring queue to new player", e)
+                }
+            }
+        }
+
         // Execute any pending play request on the main thread
         pendingPlay?.let { (songs, index) ->
             pendingPlay = null
@@ -106,9 +150,15 @@ class PlaybackManager @Inject constructor(
     }
 
     fun onServiceDestroyed() {
+        stopPositionUpdates()
+        mainHandler.removeCallbacksAndMessages(null)
         player = null
         serviceStarted = false
-        _nowPlaying.value = NowPlaying()
+        // Preserve nowPlaying state (song, queue) so the mini player persists.
+        // Only mark as not-playing since the player is gone.
+        if (_nowPlaying.value.song != null) {
+            _nowPlaying.value = _nowPlaying.value.copy(isPlaying = false)
+        }
     }
 
     fun playSongs(songs: List<SongItem>, startIndex: Int = 0) {
@@ -262,6 +312,33 @@ class PlaybackManager @Inject constructor(
         } catch (e: Exception) {
             0L
         }
+    }
+
+    private fun startPositionUpdates() {
+        stopPositionUpdates()
+        val runnable = object : Runnable {
+            override fun run() {
+                val p = player
+                if (p == null) {
+                    // Player gone — stop the update loop
+                    positionUpdateRunnable = null
+                    return
+                }
+                try {
+                    val pos = p.currentPosition
+                    val dur = if (p.duration > 0) p.duration else _nowPlaying.value.duration
+                    _nowPlaying.value = _nowPlaying.value.copy(position = pos, duration = dur)
+                } catch (_: Exception) {}
+                mainHandler.postDelayed(this, 500L)
+            }
+        }
+        positionUpdateRunnable = runnable
+        mainHandler.post(runnable)
+    }
+
+    private fun stopPositionUpdates() {
+        positionUpdateRunnable?.let { mainHandler.removeCallbacks(it) }
+        positionUpdateRunnable = null
     }
 
     private fun runOnMainThread(action: () -> Unit) {

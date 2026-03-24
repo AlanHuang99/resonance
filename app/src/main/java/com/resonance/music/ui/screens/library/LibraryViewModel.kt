@@ -62,12 +62,26 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                // Load all albums via alphabetical sorting
-                val albums = musicRepository.getAlbumList("alphabeticalByName", size = 500)
-                musicRepository.cacheAlbums(albums)
+                // Load albums in batches to avoid a single huge API call
+                val allAlbums = mutableListOf<AlbumItem>()
+                var offset = 0
+                val batchSize = 100
+                while (true) {
+                    val batch = musicRepository.getAlbumList("alphabeticalByName", size = batchSize, offset = offset)
+                    allAlbums.addAll(batch)
+                    if (batch.size < batchSize) break
+                    offset += batchSize
+                    // Show partial results after each batch
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        albums = allAlbums.toList(),
+                        coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                    )
+                }
+                musicRepository.cacheAlbums(allAlbums)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    albums = albums,
+                    albums = allAlbums,
                     coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
                 )
                 albumsLoaded = true

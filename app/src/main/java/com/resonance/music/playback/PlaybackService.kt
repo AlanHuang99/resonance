@@ -1,7 +1,11 @@
 package com.resonance.music.playback
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
@@ -58,8 +62,40 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Let MediaSessionService handle foreground promotion
+        // Ensure we promote to foreground quickly to avoid
+        // ForegroundServiceDidNotStartInTimeException.
+        // MediaSessionService normally handles this, but under heavy load it can
+        // be delayed. Post a temporary notification as a safety net.
+        try {
+            ensureNotificationChannel()
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Resonance")
+                .setContentText("Preparing playback…")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setSilent(true)
+                .build()
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.w("PlaybackService", "Could not promote to foreground early", e)
+        }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID, "Playback", NotificationManager.IMPORTANCE_LOW
+                )
+                nm.createNotificationChannel(channel)
+            }
+        }
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "resonance_playback"
+        private const val NOTIFICATION_ID = 1
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -67,16 +103,17 @@ class PlaybackService : MediaSessionService() {
         if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
             stopSelf()
         }
+        // If music is still playing, the foreground service keeps running
     }
 
     override fun onDestroy() {
-        playbackManager.onServiceDestroyed()
         mediaSession?.run {
             player.release()
             release()
         }
         mediaSession = null
         player = null
+        playbackManager.onServiceDestroyed()
         super.onDestroy()
     }
 }

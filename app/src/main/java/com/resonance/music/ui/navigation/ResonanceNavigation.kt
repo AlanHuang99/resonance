@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -49,16 +50,26 @@ fun ResonanceNavHost(
     musicRepository: MusicRepository = hiltViewModel<NavViewModel>().musicRepository
 ) {
     val navController = rememberNavController()
-    val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
+    // Use null as initial to distinguish "not yet loaded" from "not logged in"
+    val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = null)
     val nowPlaying by playbackManager.nowPlaying.collectAsState()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.LIBRARY)
     val showMiniPlayer = nowPlaying.song != null &&
-            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN)
+            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN, null)
 
-    val startDestination = if (isLoggedIn) Routes.HOME else Routes.LOGIN
+    // Show loading while auth state is being read from DataStore
+    val loggedIn = isLoggedIn
+    if (loggedIn == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val startDestination = if (loggedIn) Routes.HOME else Routes.LOGIN
 
     Scaffold(
         bottomBar = {

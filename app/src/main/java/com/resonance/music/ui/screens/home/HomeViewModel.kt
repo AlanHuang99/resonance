@@ -33,7 +33,7 @@ class HomeViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
                 // Each section loads independently — one failure doesn't block the rest
@@ -51,7 +51,7 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.localizedMessage
+                    error = e.localizedMessage ?: "Connection failed"
                 )
             }
         }
