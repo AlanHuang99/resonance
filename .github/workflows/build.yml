@@ -59,21 +59,15 @@ jobs:
       contents: write
 
     steps:
-      - name: Download debug APK
-        uses: actions/download-artifact@v4
-        with:
-          name: resonance-debug
-
       - name: Download release APK
         uses: actions/download-artifact@v4
         with:
           name: resonance-release
 
-      - name: Rename APKs
+      - name: Rename APK
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
-          mv app-debug.apk "resonance-${VERSION}-debug.apk"
-          mv app-release-unsigned.apk "resonance-${VERSION}-release.apk"
+          mv app-release-unsigned.apk "resonance-${VERSION}.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
