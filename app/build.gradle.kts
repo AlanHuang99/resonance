@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,16 +16,37 @@ android {
         applicationId = "com.resonance.music"
         minSdk = 31
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val props = rootProject.file("signing.properties")
+            if (props.exists()) {
+                val signingProps = Properties()
+                props.inputStream().use { signingProps.load(it) }
+                storeFile = file(signingProps["storeFile"] as String)
+                storePassword = signingProps["storePassword"] as String
+                keyAlias = signingProps["keyAlias"] as String
+                keyPassword = signingProps["keyPassword"] as String
+            } else {
+                // Fallback: env vars for CI
+                storeFile = file(System.getenv("SIGNING_KEYSTORE") ?: "../release.keystore")
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "resonance"
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
