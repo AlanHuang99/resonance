@@ -215,7 +215,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Resonance v0.1.0",
+                    "Resonance v0.3.0",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

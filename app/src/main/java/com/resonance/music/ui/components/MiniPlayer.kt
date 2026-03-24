@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.resonance.music.playback.NowPlaying
+import com.resonance.music.ui.components.MarqueeText
 
 @Composable
 fun MiniPlayer(
@@ -83,11 +84,9 @@ fun MiniPlayer(
                         .weight(1f)
                         .padding(horizontal = 12.dp)
                 ) {
-                    Text(
+                    MarqueeText(
                         text = song.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = song.artist ?: "",

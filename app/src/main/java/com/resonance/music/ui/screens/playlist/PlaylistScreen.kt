@@ -1,4 +1,4 @@
-package com.resonance.music.ui.screens.album
+package com.resonance.music.ui.screens.playlist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,23 +23,29 @@ import com.resonance.music.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlbumScreen(
-    albumId: String,
+fun PlaylistScreen(
+    playlistId: String,
     onBackClick: () -> Unit,
-    onArtistClick: (String) -> Unit,
-    onAlbumClick: ((String) -> Unit)? = null,
-    viewModel: AlbumViewModel = hiltViewModel()
+    onAlbumClick: (String) -> Unit = {},
+    onArtistClick: (String) -> Unit = {},
+    viewModel: PlaylistViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(albumId) {
-        viewModel.loadAlbum(albumId)
+    LaunchedEffect(playlistId) {
+        viewModel.loadPlaylist(playlistId)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.albumName) },
+                title = {
+                    Text(
+                        uiState.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -54,12 +61,19 @@ fun AlbumScreen(
             ) {
                 CircularProgressIndicator()
             }
+        } else if (uiState.error != null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(uiState.error ?: "Error", color = MaterialTheme.colorScheme.error)
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                // Album header
+                // Playlist header
                 item {
                     Column(
                         modifier = Modifier
@@ -69,7 +83,7 @@ fun AlbumScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(240.dp)
+                                .size(200.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
@@ -77,13 +91,13 @@ fun AlbumScreen(
                             if (uiState.coverArtUrl != null) {
                                 AsyncImage(
                                     model = uiState.coverArtUrl,
-                                    contentDescription = "Album art",
+                                    contentDescription = "Playlist art",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
                                 Icon(
-                                    Icons.Default.Album,
+                                    Icons.AutoMirrored.Filled.QueueMusic,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -94,30 +108,35 @@ fun AlbumScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = uiState.albumName,
+                            text = uiState.name,
                             style = MaterialTheme.typography.headlineSmall,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        Text(
-                            text = uiState.artistName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        if (uiState.year != null || uiState.genre != null) {
+                        uiState.songCount?.let { count ->
                             Text(
-                                text = listOfNotNull(uiState.year?.toString(), uiState.genre)
-                                    .joinToString(" \u2022 "),
+                                text = "$count songs",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
+                        uiState.comment?.let { comment ->
+                            if (comment.isNotBlank()) {
+                                Text(
+                                    text = comment,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Play / Shuffle buttons
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(onClick = { viewModel.playAll(shuffle = false) }) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -137,10 +156,8 @@ fun AlbumScreen(
                 itemsIndexed(uiState.songs) { index, song ->
                     SongListItem(
                         song = song,
-                        trackNumber = song.track,
-                        onClick = { viewModel.playSongAt(index) },
-                        onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
-                        onGoToAlbum = song.albumId?.let { id -> onAlbumClick?.let { nav -> { nav(id) } } }
+                        trackNumber = index + 1,
+                        onClick = { viewModel.playSongAt(index) }
                     )
                 }
             }

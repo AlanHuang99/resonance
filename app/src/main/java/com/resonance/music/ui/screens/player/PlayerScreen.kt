@@ -17,12 +17,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.resonance.music.ui.components.MarqueeText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
     onBackClick: () -> Unit,
     onLyricsClick: () -> Unit = {},
+    onQueueClick: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -78,26 +80,23 @@ fun PlayerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
+                MarqueeText(
                     text = uiState.title,
                     style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                MarqueeText(
                     text = uiState.artist,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Text(
+                MarqueeText(
                     text = uiState.album,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -193,7 +192,7 @@ fun PlayerScreen(
                 IconButton(onClick = onLyricsClick) {
                     Icon(Icons.Default.Lyrics, contentDescription = "Lyrics")
                 }
-                IconButton(onClick = { /* show queue */ }) {
+                IconButton(onClick = onQueueClick) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
             }

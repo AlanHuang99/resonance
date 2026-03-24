@@ -58,6 +58,46 @@ val VoidSurfaceVariant = Color(0xFF1A1A1A)
 val VoidOnSurface = Color(0xFFD0D0D0)
 val VoidBackground = Color(0xFF080808)
 
+// --- Sakura Bloom (pink & warm rose) ---
+val SakuraPink = Color(0xFFFF6B9D)
+val SakuraPinkDim = Color(0xFFE0527F)
+val SakuraRose = Color(0xFFFFB7C5)
+val SakuraRoseDim = Color(0xFFD4909C)
+val SakuraSurface = Color(0xFF1A0D12)
+val SakuraSurfaceVariant = Color(0xFF261420)
+val SakuraOnSurface = Color(0xFFF0DDE4)
+val SakuraBackground = Color(0xFF120810)
+
+// --- Emerald City (rich green & gold) ---
+val EmeraldGreen = Color(0xFF50C878)
+val EmeraldGreenDim = Color(0xFF3BA060)
+val EmeraldGold = Color(0xFFFFD700)
+val EmeraldGoldDim = Color(0xFFCCAD00)
+val EmeraldSurface = Color(0xFF0A1510)
+val EmeraldSurfaceVariant = Color(0xFF12201A)
+val EmeraldOnSurface = Color(0xFFD8F0E0)
+val EmeraldBackground = Color(0xFF060E0A)
+
+// --- Cyber Violet (electric purple & indigo) ---
+val CyberViolet = Color(0xFFB388FF)
+val CyberVioletDim = Color(0xFF9068E0)
+val CyberIndigo = Color(0xFF7C4DFF)
+val CyberIndigoDim = Color(0xFF6234CC)
+val CyberSurface = Color(0xFF0E0A1A)
+val CyberSurfaceVariant = Color(0xFF18122D)
+val CyberOnSurface = Color(0xFFE0D8F0)
+val CyberBackground = Color(0xFF080614)
+
+// --- Arctic Ice (frosty white & ice blue) ---
+val ArcticBlue = Color(0xFF80D8FF)
+val ArcticBlueDim = Color(0xFF40C4FF)
+val ArcticWhite = Color(0xFFE0F7FA)
+val ArcticWhiteDim = Color(0xFFB2EBF2)
+val ArcticSurface = Color(0xFF0A1218)
+val ArcticSurfaceVariant = Color(0xFF101C24)
+val ArcticOnSurface = Color(0xFFD8ECF4)
+val ArcticBackground = Color(0xFF060D12)
+
 // --- Light themes fallbacks ---
 val LightSurface = Color(0xFFF8F9FC)
 val LightBackground = Color(0xFFFFFFFF)

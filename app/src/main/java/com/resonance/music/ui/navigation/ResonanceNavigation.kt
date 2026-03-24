@@ -25,6 +25,8 @@ import com.resonance.music.ui.screens.library.LibraryScreen
 import com.resonance.music.ui.screens.login.LoginScreen
 import com.resonance.music.ui.screens.lyrics.LyricsScreen
 import com.resonance.music.ui.screens.player.PlayerScreen
+import com.resonance.music.ui.screens.playlist.PlaylistScreen
+import com.resonance.music.ui.screens.queue.QueueScreen
 import com.resonance.music.ui.screens.search.SearchScreen
 import com.resonance.music.ui.screens.settings.SettingsScreen
 
@@ -36,11 +38,14 @@ object Routes {
     const val PLAYER = "player"
     const val LYRICS = "lyrics"
     const val SETTINGS = "settings"
+    const val QUEUE = "queue"
     const val ALBUM = "album/{albumId}"
     const val ARTIST = "artist/{artistId}"
+    const val PLAYLIST = "playlist/{playlistId}"
 
     fun album(id: String) = "album/$id"
     fun artist(id: String) = "artist/$id"
+    fun playlist(id: String) = "playlist/$id"
 }
 
 @Composable
@@ -50,7 +55,6 @@ fun ResonanceNavHost(
     musicRepository: MusicRepository = hiltViewModel<NavViewModel>().musicRepository
 ) {
     val navController = rememberNavController()
-    // Use null as initial to distinguish "not yet loaded" from "not logged in"
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = null)
     val nowPlaying by playbackManager.nowPlaying.collectAsState()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -58,9 +62,8 @@ fun ResonanceNavHost(
 
     val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.LIBRARY)
     val showMiniPlayer = nowPlaying.song != null &&
-            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN, null)
+            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN, Routes.QUEUE, null)
 
-    // Show loading while auth state is being read from DataStore
     val loggedIn = isLoggedIn
     if (loggedIn == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -81,8 +84,8 @@ fun ResonanceNavHost(
                             musicRepository.getCoverArtUrl(it)
                         },
                         onPlayerClick = {
-                        navController.navigate(Routes.PLAYER) { launchSingleTop = true }
-                    },
+                            navController.navigate(Routes.PLAYER) { launchSingleTop = true }
+                        },
                         onPlayPauseClick = { playbackManager.togglePlayPause() },
                         onNextClick = { playbackManager.next() }
                     )
@@ -142,7 +145,7 @@ fun ResonanceNavHost(
                 LibraryScreen(
                     onArtistClick = { navController.navigate(Routes.artist(it)) },
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
-                    onPlaylistClick = { /* TODO: playlist detail screen */ }
+                    onPlaylistClick = { navController.navigate(Routes.playlist(it)) }
                 )
             }
 
@@ -157,12 +160,21 @@ fun ResonanceNavHost(
             composable(Routes.PLAYER) {
                 PlayerScreen(
                     onBackClick = { navController.popBackStack() },
-                    onLyricsClick = { navController.navigate(Routes.LYRICS) }
+                    onLyricsClick = { navController.navigate(Routes.LYRICS) },
+                    onQueueClick = { navController.navigate(Routes.QUEUE) }
                 )
             }
 
             composable(Routes.LYRICS) {
                 LyricsScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.QUEUE) {
+                QueueScreen(
+                    playbackManager = playbackManager,
+                    musicRepository = musicRepository,
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -197,6 +209,18 @@ fun ResonanceNavHost(
                     artistId = backStackEntry.arguments?.getString("artistId") ?: "",
                     onBackClick = { navController.popBackStack() },
                     onAlbumClick = { navController.navigate(Routes.album(it)) }
+                )
+            }
+
+            composable(
+                route = Routes.PLAYLIST,
+                arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                PlaylistScreen(
+                    playlistId = backStackEntry.arguments?.getString("playlistId") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onArtistClick = { navController.navigate(Routes.artist(it)) }
                 )
             }
         }

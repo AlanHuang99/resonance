@@ -38,6 +38,26 @@ enum class AppTheme(
         description = "Ultra-minimal monochrome",
         previewColor = VoidWhite
     ),
+    SAKURA_BLOOM(
+        displayName = "Sakura Bloom",
+        description = "Cherry blossom pink & rose",
+        previewColor = SakuraPink
+    ),
+    EMERALD_CITY(
+        displayName = "Emerald City",
+        description = "Rich green & gold luxury",
+        previewColor = EmeraldGreen
+    ),
+    CYBER_VIOLET(
+        displayName = "Cyber Violet",
+        description = "Electric purple & indigo",
+        previewColor = CyberViolet
+    ),
+    ARCTIC_ICE(
+        displayName = "Arctic Ice",
+        description = "Frosty blue & crisp white",
+        previewColor = ArcticBlue
+    ),
     MATERIAL_YOU(
         displayName = "Material You",
         description = "Dynamic colors from your wallpaper",
@@ -148,6 +168,90 @@ enum class AppTheme(
             error = Color(0xFFFF4444),
             outline = Color(0xFF404040),
             outlineVariant = Color(0xFF252525)
+        )
+
+        SAKURA_BLOOM -> darkColorScheme(
+            primary = SakuraPink,
+            onPrimary = Color.Black,
+            primaryContainer = SakuraPinkDim,
+            onPrimaryContainer = Color.White,
+            secondary = SakuraRose,
+            onSecondary = Color.Black,
+            secondaryContainer = SakuraRoseDim,
+            onSecondaryContainer = Color.White,
+            tertiary = SakuraRose,
+            surface = SakuraSurface,
+            surfaceVariant = SakuraSurfaceVariant,
+            onSurface = SakuraOnSurface,
+            onSurfaceVariant = Color(0xFFA08090),
+            background = SakuraBackground,
+            onBackground = SakuraOnSurface,
+            error = Color(0xFFFF5252),
+            outline = Color(0xFF604050),
+            outlineVariant = Color(0xFF302028)
+        )
+
+        EMERALD_CITY -> darkColorScheme(
+            primary = EmeraldGreen,
+            onPrimary = Color.Black,
+            primaryContainer = EmeraldGreenDim,
+            onPrimaryContainer = Color.White,
+            secondary = EmeraldGold,
+            onSecondary = Color.Black,
+            secondaryContainer = EmeraldGoldDim,
+            onSecondaryContainer = Color.Black,
+            tertiary = EmeraldGold,
+            surface = EmeraldSurface,
+            surfaceVariant = EmeraldSurfaceVariant,
+            onSurface = EmeraldOnSurface,
+            onSurfaceVariant = Color(0xFF80A890),
+            background = EmeraldBackground,
+            onBackground = EmeraldOnSurface,
+            error = Color(0xFFFF5252),
+            outline = Color(0xFF406850),
+            outlineVariant = Color(0xFF1A3020)
+        )
+
+        CYBER_VIOLET -> darkColorScheme(
+            primary = CyberViolet,
+            onPrimary = Color.Black,
+            primaryContainer = CyberVioletDim,
+            onPrimaryContainer = Color.White,
+            secondary = CyberIndigo,
+            onSecondary = Color.White,
+            secondaryContainer = CyberIndigoDim,
+            onSecondaryContainer = Color.White,
+            tertiary = CyberIndigo,
+            surface = CyberSurface,
+            surfaceVariant = CyberSurfaceVariant,
+            onSurface = CyberOnSurface,
+            onSurfaceVariant = Color(0xFF9080B0),
+            background = CyberBackground,
+            onBackground = CyberOnSurface,
+            error = Color(0xFFFF5252),
+            outline = Color(0xFF504068),
+            outlineVariant = Color(0xFF201838)
+        )
+
+        ARCTIC_ICE -> darkColorScheme(
+            primary = ArcticBlue,
+            onPrimary = Color.Black,
+            primaryContainer = ArcticBlueDim,
+            onPrimaryContainer = Color.Black,
+            secondary = ArcticWhite,
+            onSecondary = Color.Black,
+            secondaryContainer = ArcticWhiteDim,
+            onSecondaryContainer = Color.Black,
+            tertiary = ArcticWhite,
+            surface = ArcticSurface,
+            surfaceVariant = ArcticSurfaceVariant,
+            onSurface = ArcticOnSurface,
+            onSurfaceVariant = Color(0xFF80A8B8),
+            background = ArcticBackground,
+            onBackground = ArcticOnSurface,
+            error = Color(0xFFFF5252),
+            outline = Color(0xFF385868),
+            outlineVariant = Color(0xFF142830)
         )
 
         MATERIAL_YOU -> darkColorScheme() // Placeholder — replaced at runtime
