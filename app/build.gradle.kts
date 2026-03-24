@@ -28,13 +28,13 @@ android {
             if (props.exists()) {
                 val signingProps = Properties()
                 props.inputStream().use { signingProps.load(it) }
-                storeFile = file(signingProps["storeFile"] as String)
+                storeFile = rootProject.file(signingProps["storeFile"] as String)
                 storePassword = signingProps["storePassword"] as String
                 keyAlias = signingProps["keyAlias"] as String
                 keyPassword = signingProps["keyPassword"] as String
             } else {
                 // Fallback: env vars for CI
-                storeFile = file(System.getenv("SIGNING_KEYSTORE") ?: "../release.keystore")
+                storeFile = rootProject.file(System.getenv("SIGNING_KEYSTORE") ?: "release.keystore")
                 storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "resonance"
                 keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
