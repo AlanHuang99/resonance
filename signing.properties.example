@@ -1,0 +1,14 @@
+# Copy to signing.properties for local release signing.
+# DO NOT COMMIT signing.properties.
+
+# Path relative to repo root (or absolute path)
+storeFile=release.keystore
+
+# Keystore password
+storePassword=
+
+# Key alias
+keyAlias=
+
+# Key password
+keyPassword=

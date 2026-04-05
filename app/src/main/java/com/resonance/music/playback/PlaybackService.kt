@@ -39,14 +39,30 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
 
+        var consecutiveFailures = 0
+
         // Add error listener to prevent unhandled crashes
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "Playback error: ${error.message}", error)
+                consecutiveFailures++
+                if (consecutiveFailures > 3) {
+                    Log.e("PlaybackService", "Too many consecutive playback errors, pausing to prevent infinite loop")
+                    exoPlayer.pause()
+                    return
+                }
+                
                 // Try to skip to next track on error instead of crashing
                 if (exoPlayer.hasNextMediaItem()) {
                     exoPlayer.seekToNextMediaItem()
                     exoPlayer.prepare()
+                    exoPlayer.play()
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) {
+                    consecutiveFailures = 0 // Reset on successful playback
                 }
             }
         })

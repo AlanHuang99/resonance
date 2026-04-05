@@ -2,6 +2,20 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.3.1] - 2026-04-05
+
+### Changed
+- Hardened `PlaybackService` export with `BIND_MEDIA_SESSION_SERVICE`
+- Disabled OkHttp HTTP logging in non-debuggable builds
+- Refreshed launcher icon foreground
+
+### Fixed
+- Reduced playback error loops by pausing after repeated failures
+- Improved Compose list performance via better `contentType` hints
+
+### Added
+- `signing.properties.example` template for local signing setup
+
 ## [0.1.0] - 2025-03-24
 
 ### Added

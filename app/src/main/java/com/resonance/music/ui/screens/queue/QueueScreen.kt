@@ -72,7 +72,11 @@ fun QueueScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                itemsIndexed(queue, key = { idx, song -> "${song.id}_$idx" }) { index, song ->
+                itemsIndexed(
+                    items = queue,
+                    key = { idx, song -> "${song.id}_$idx" },
+                    contentType = { _, _ -> "queue_item" }
+                ) { index, song ->
                     val isCurrentSong = song.id == currentSongId
                     QueueItem(
                         song = song,
