@@ -83,7 +83,7 @@ fun QueueScreen(
                         index = index + 1,
                         isPlaying = isCurrentSong,
                         coverArtUrl = song.coverArt?.let { musicRepository.getCoverArtUrl(it, 100) },
-                        onClick = { playbackManager.playSongs(queue, index) }
+                        onClick = { playbackManager.jumpTo(index) }
                     )
                 }
             }

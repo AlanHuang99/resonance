@@ -16,8 +16,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.resonance.music.ui.components.MarqueeText
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,27 +102,13 @@ fun PlayerScreen(
                 )
             }
 
-            // Progress slider
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Slider(
-                    value = uiState.progress,
-                    onValueChange = viewModel::onSeek,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = formatDuration(uiState.currentPosition),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    Text(
-                        text = formatDuration(uiState.duration),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
+            // Progress slider (collects position in its own scope so ticks
+            // don't recompose the art, marquee text, or controls)
+            PlayerProgress(
+                positionFlow = viewModel.position,
+                duration = uiState.duration,
+                onSeek = viewModel::onSeek
+            )
 
             // Playback controls
             Row(
@@ -196,6 +184,29 @@ fun PlayerScreen(
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlayerProgress(
+    positionFlow: StateFlow<Long>,
+    duration: Long,
+    onSeek: (Float) -> Unit
+) {
+    val position by positionFlow.collectAsStateWithLifecycle()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Slider(
+            value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+            onValueChange = onSeek,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(formatDuration(position), style = MaterialTheme.typography.labelSmall)
+            Text(formatDuration(duration), style = MaterialTheme.typography.labelSmall)
         }
     }
 }

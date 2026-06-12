@@ -1,43 +1,61 @@
 package com.resonance.music.playback
 
+import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.os.Handler
-import android.os.Looper
+import android.net.Uri
+import android.os.Bundle
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.SongItem
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 data class NowPlaying(
     val song: SongItem? = null,
     val isPlaying: Boolean = false,
-    val position: Long = 0L,
     val duration: Long = 0L
 )
 
 enum class RepeatMode { OFF, ALL, ONE }
 
+/**
+ * UI-facing playback API. Connects a Media3 [MediaController] to [PlaybackService]
+ * and exposes playback state as flows. Playback position is a separate flow from
+ * [nowPlaying] so position ticks don't recompose song/controls.
+ */
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiHelper: SubsonicApiHelper
 ) {
-    private var player: ExoPlayer? = null
-    private var serviceStarted = false
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private var controller: MediaController? = null
+    private var connecting = false
 
     private val _nowPlaying = MutableStateFlow(NowPlaying())
     val nowPlaying: StateFlow<NowPlaying> = _nowPlaying.asStateFlow()
+
+    private val _position = MutableStateFlow(0L)
+    val position: StateFlow<Long> = _position.asStateFlow()
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queue: StateFlow<List<SongItem>> = _queue.asStateFlow()
@@ -48,290 +66,212 @@ class PlaybackManager @Inject constructor(
     private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
     val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
 
-    private var currentQueueIndex = -1
     private var pendingPlay: Pair<List<SongItem>, Int>? = null
-    private var positionUpdateRunnable: Runnable? = null
+    private var positionJob: Job? = null
 
-    private fun ensureServiceStarted() {
-        // Only start the service if it's not already running.
-        // The player being non-null means the service's onCreate() has completed.
-        if (player != null) return
-        if (!serviceStarted) {
-            try {
-                val intent = Intent(context, PlaybackService::class.java)
-                context.startForegroundService(intent)
-                serviceStarted = true
+    private val listener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _nowPlaying.update { it.copy(isPlaying = isPlaying) }
+            if (isPlaying) startPositionUpdates() else stopPositionUpdates()
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            syncNowPlaying()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) syncNowPlaying()
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            _shuffleEnabled.value = shuffleModeEnabled
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            _repeatMode.value = repeatMode.toAppRepeatMode()
+        }
+    }
+
+    /** Connects the UI-side controller to the playback service. Idempotent. */
+    fun initialize() {
+        if (controller != null || connecting) return
+        connecting = true
+        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val future = MediaController.Builder(context, token).buildAsync()
+        future.addListener({
+            connecting = false
+            val c = try {
+                future.get()
             } catch (e: Exception) {
-                Log.e("PlaybackManager", "Failed to start PlaybackService", e)
+                Log.e("PlaybackManager", "Failed to connect MediaController", e)
+                return@addListener
             }
-        }
+            controller = c
+            c.addListener(listener)
+            onControllerReady(c)
+        }, ContextCompat.getMainExecutor(context))
     }
 
-    fun initialize(exoPlayer: ExoPlayer) {
-        player = exoPlayer
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _nowPlaying.value = _nowPlaying.value.copy(isPlaying = isPlaying)
-                if (isPlaying) startPositionUpdates() else stopPositionUpdates()
-            }
+    private fun onControllerReady(c: MediaController) {
+        _shuffleEnabled.value = c.shuffleModeEnabled
+        _repeatMode.value = c.repeatMode.toAppRepeatMode()
 
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                try {
-                    val index = exoPlayer.currentMediaItemIndex
-                    val q = _queue.value
-                    if (index in q.indices) {
-                        currentQueueIndex = index
-                        _nowPlaying.value = _nowPlaying.value.copy(
-                            song = q[index],
-                            duration = if (exoPlayer.duration > 0) exoPlayer.duration else 0L
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.e("PlaybackManager", "Error on media transition", e)
-                }
-            }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    _nowPlaying.value = _nowPlaying.value.copy(
-                        duration = if (exoPlayer.duration > 0) exoPlayer.duration else 0L
-                    )
-                }
-            }
-        })
-
-        // If we have a persisted queue & song, restore it on the new player
-        val currentNow = _nowPlaying.value
-        val currentQueue = _queue.value
-        if (currentNow.song != null && currentQueue.isNotEmpty()) {
-            // Re-attach queue to the new player so playback can resume
-            runOnMainThread {
-                try {
-                    val mediaItems = currentQueue.mapNotNull { song ->
-                        val uri = apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
-                        MediaItem.Builder()
-                            .setUri(uri)
-                            .setMediaId(song.id)
-                            .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setTitle(song.title)
-                                    .setArtist(song.artist)
-                                    .setAlbumTitle(song.album)
-                                    .build()
-                            )
-                            .build()
-                    }
-                    if (mediaItems.isNotEmpty()) {
-                        val idx = currentQueueIndex.coerceIn(0, mediaItems.size - 1)
-                        exoPlayer.setMediaItems(mediaItems, idx, currentNow.position)
-                        exoPlayer.prepare()
-                        // Don't auto-play — user sees the mini player and can tap play
-                    }
-                } catch (e: Exception) {
-                    Log.e("PlaybackManager", "Error restoring queue to new player", e)
-                }
-            }
-        }
-
-        // Execute any pending play request on the main thread
-        pendingPlay?.let { (songs, index) ->
+        val pending = pendingPlay
+        if (pending != null) {
             pendingPlay = null
-            runOnMainThread { playSongsInternal(exoPlayer, songs, index) }
+            startPlayback(c, pending.first, pending.second)
+            return
         }
+
+        // App was restarted while the service kept playing: rebuild the queue
+        // from the session's media items so the mini player / queue stay populated.
+        if (_queue.value.isEmpty() && c.mediaItemCount > 0) {
+            _queue.value = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).toSongItem() }
+        }
+        syncNowPlaying()
+        if (c.isPlaying) startPositionUpdates()
     }
 
-    fun onServiceDestroyed() {
-        stopPositionUpdates()
-        mainHandler.removeCallbacksAndMessages(null)
-        player = null
-        serviceStarted = false
-        // Preserve nowPlaying state (song, queue) so the mini player persists.
-        // Only mark as not-playing since the player is gone.
-        if (_nowPlaying.value.song != null) {
-            _nowPlaying.value = _nowPlaying.value.copy(isPlaying = false)
-        }
+    private fun syncNowPlaying() {
+        val c = controller ?: return
+        val song = _queue.value.getOrNull(c.currentMediaItemIndex)
+        _position.value = c.currentPosition
+        _nowPlaying.value = NowPlaying(
+            song = song,
+            isPlaying = c.isPlaying,
+            duration = if (c.duration > 0) c.duration else (song?.duration?.toLong() ?: 0L) * 1000
+        )
     }
 
     fun playSongs(songs: List<SongItem>, startIndex: Int = 0) {
         if (songs.isEmpty()) return
-        ensureServiceStarted()
-
-        val p = player
-        if (p != null) {
-            runOnMainThread { playSongsInternal(p, songs, startIndex) }
+        initialize()
+        val c = controller
+        if (c != null) {
+            startPlayback(c, songs, startIndex)
         } else {
             pendingPlay = songs to startIndex
             _queue.value = songs
-            if (startIndex in songs.indices) {
-                _nowPlaying.value = NowPlaying(song = songs[startIndex], isPlaying = false)
+            songs.getOrNull(startIndex.coerceIn(0, songs.size - 1))?.let {
+                _nowPlaying.value = NowPlaying(
+                    song = it,
+                    isPlaying = false,
+                    duration = (it.duration?.toLong() ?: 0L) * 1000
+                )
             }
         }
     }
 
-    private fun playSongsInternal(p: ExoPlayer, songs: List<SongItem>, startIndex: Int) {
-        try {
-            _queue.value = songs
-            currentQueueIndex = startIndex
+    private fun startPlayback(c: MediaController, songs: List<SongItem>, startIndex: Int) {
+        _queue.value = songs
+        val items = songs.mapNotNull { buildMediaItem(it) }
+        if (items.isEmpty()) return
+        c.setMediaItems(items, startIndex.coerceIn(0, items.size - 1), 0L)
+        c.prepare()
+        c.play()
+        syncNowPlaying()
+    }
 
-            val mediaItems = songs.mapNotNull { song ->
-                val uri = apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
-
-                MediaItem.Builder()
-                    .setUri(uri)
-                    .setMediaId(song.id)
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setTitle(song.title)
-                            .setArtist(song.artist)
-                            .setAlbumTitle(song.album)
-                            .build()
-                    )
-                    .build()
-            }
-
-            if (mediaItems.isEmpty()) return
-
-            p.stop()
-            p.clearMediaItems()
-            p.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
-            p.prepare()
-            p.play()
-
-            if (startIndex in songs.indices) {
-                _nowPlaying.value = NowPlaying(
-                    song = songs[startIndex],
-                    isPlaying = true
-                )
-            }
-        } catch (e: Exception) {
-            Log.e("PlaybackManager", "Error starting playback", e)
+    /** Seek to a queue position without rebuilding the queue (fast in-place jump). */
+    fun jumpTo(index: Int) {
+        val c = controller ?: return
+        if (index in 0 until c.mediaItemCount) {
+            c.seekTo(index, 0L)
+            c.play()
         }
     }
 
     fun togglePlayPause() {
-        runOnMainThread {
-            try {
-                val p = player ?: return@runOnMainThread
-                if (p.isPlaying) p.pause() else p.play()
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error toggling play/pause", e)
-            }
-        }
+        val c = controller ?: return
+        if (c.isPlaying) c.pause() else c.play()
     }
 
     fun next() {
-        runOnMainThread {
-            try {
-                val p = player ?: return@runOnMainThread
-                if (p.hasNextMediaItem()) p.seekToNextMediaItem()
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error seeking next", e)
-            }
-        }
+        controller?.takeIf { it.hasNextMediaItem() }?.seekToNextMediaItem()
     }
 
     fun previous() {
-        runOnMainThread {
-            try {
-                val p = player ?: return@runOnMainThread
-                if (p.currentPosition > 3000) {
-                    p.seekTo(0)
-                } else if (p.hasPreviousMediaItem()) {
-                    p.seekToPreviousMediaItem()
-                }
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error seeking previous", e)
-            }
+        val c = controller ?: return
+        if (c.currentPosition > 3000) {
+            c.seekTo(0)
+        } else if (c.hasPreviousMediaItem()) {
+            c.seekToPreviousMediaItem()
         }
     }
 
-    fun seekTo(position: Long) {
-        runOnMainThread {
-            try {
-                player?.seekTo(position)
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error seeking", e)
-            }
-        }
+    fun seekTo(positionMs: Long) {
+        controller?.seekTo(positionMs)
+        _position.value = positionMs
     }
 
     fun toggleShuffle() {
-        runOnMainThread {
-            try {
-                val p = player ?: return@runOnMainThread
-                val newValue = !_shuffleEnabled.value
-                _shuffleEnabled.value = newValue
-                p.shuffleModeEnabled = newValue
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error toggling shuffle", e)
-            }
-        }
+        val c = controller ?: return
+        c.shuffleModeEnabled = !c.shuffleModeEnabled
     }
 
     fun toggleRepeat() {
-        runOnMainThread {
-            try {
-                val p = player ?: return@runOnMainThread
-                _repeatMode.value = when (_repeatMode.value) {
-                    RepeatMode.OFF -> {
-                        p.repeatMode = Player.REPEAT_MODE_ALL
-                        RepeatMode.ALL
-                    }
-                    RepeatMode.ALL -> {
-                        p.repeatMode = Player.REPEAT_MODE_ONE
-                        RepeatMode.ONE
-                    }
-                    RepeatMode.ONE -> {
-                        p.repeatMode = Player.REPEAT_MODE_OFF
-                        RepeatMode.OFF
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("PlaybackManager", "Error toggling repeat", e)
-            }
+        val c = controller ?: return
+        c.repeatMode = when (c.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
         }
     }
 
-    fun getCurrentPosition(): Long {
-        return try {
-            player?.currentPosition ?: 0L
-        } catch (e: Exception) {
-            0L
-        }
-    }
+    fun getCurrentPosition(): Long = controller?.currentPosition ?: _position.value
 
     private fun startPositionUpdates() {
-        stopPositionUpdates()
-        val runnable = object : Runnable {
-            override fun run() {
-                val p = player
-                if (p == null) {
-                    // Player gone — stop the update loop
-                    positionUpdateRunnable = null
-                    return
-                }
-                try {
-                    val pos = p.currentPosition
-                    val dur = if (p.duration > 0) p.duration else _nowPlaying.value.duration
-                    _nowPlaying.value = _nowPlaying.value.copy(position = pos, duration = dur)
-                } catch (_: Exception) {}
-                mainHandler.postDelayed(this, 500L)
+        positionJob?.cancel()
+        positionJob = scope.launch {
+            while (isActive) {
+                controller?.let { _position.value = it.currentPosition }
+                delay(500)
             }
         }
-        positionUpdateRunnable = runnable
-        mainHandler.post(runnable)
     }
 
     private fun stopPositionUpdates() {
-        positionUpdateRunnable?.let { mainHandler.removeCallbacks(it) }
-        positionUpdateRunnable = null
+        positionJob?.cancel()
+        positionJob = null
     }
 
-    private fun runOnMainThread(action: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            action()
-        } else {
-            mainHandler.post(action)
-        }
+    private fun buildMediaItem(song: SongItem): MediaItem? {
+        val uri = apiHelper.getStreamUrl(song.id) ?: return null
+        val artworkUri = song.coverArt?.let { apiHelper.getCoverArtUrl(it, 600) }
+        val extras = Bundle().apply { song.coverArt?.let { putString(EXTRA_COVER_ART, it) } }
+        return MediaItem.Builder()
+            .setUri(uri)
+            .setMediaId(song.id)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setArtworkUri(artworkUri?.let { Uri.parse(it) })
+                    .setExtras(extras)
+                    .build()
+            )
+            .build()
+    }
+
+    private fun MediaItem.toSongItem(): SongItem {
+        val md = mediaMetadata
+        return SongItem(
+            id = mediaId,
+            title = md.title?.toString() ?: "",
+            artist = md.artist?.toString(),
+            album = md.albumTitle?.toString(),
+            coverArt = md.extras?.getString(EXTRA_COVER_ART)
+        )
+    }
+
+    private fun Int.toAppRepeatMode(): RepeatMode = when (this) {
+        Player.REPEAT_MODE_ONE -> RepeatMode.ONE
+        Player.REPEAT_MODE_ALL -> RepeatMode.ALL
+        else -> RepeatMode.OFF
+    }
+
+    companion object {
+        private const val EXTRA_COVER_ART = "coverArt"
     }
 }

@@ -80,6 +80,7 @@ fun ResonanceNavHost(
                 if (showMiniPlayer) {
                     MiniPlayer(
                         nowPlaying = nowPlaying,
+                        positionFlow = playbackManager.position,
                         coverArtUrl = nowPlaying.song?.coverArt?.let {
                             musicRepository.getCoverArtUrl(it, 128)
                         },

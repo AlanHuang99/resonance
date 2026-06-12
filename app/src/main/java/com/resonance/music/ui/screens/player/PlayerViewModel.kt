@@ -18,8 +18,6 @@ data class PlayerUiState(
     val album: String = "",
     val coverArtUrl: String? = null,
     val isPlaying: Boolean = false,
-    val progress: Float = 0f,
-    val currentPosition: Long = 0L,
     val duration: Long = 0L,
     val isFavorite: Boolean = false,
     val shuffleEnabled: Boolean = false,
@@ -35,22 +33,20 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
+    /** Position ticks live in their own flow so they don't recompose the whole screen. */
+    val position: StateFlow<Long> = playbackManager.position
+
     init {
-        // Position + duration now come from PlaybackManager's own update loop
         viewModelScope.launch {
             playbackManager.nowPlaying.collect { nowPlaying ->
                 val song = nowPlaying.song
-                val duration = nowPlaying.duration
-                val position = nowPlaying.position
                 _uiState.value = _uiState.value.copy(
                     title = song?.title ?: "Not Playing",
                     artist = song?.artist ?: "",
                     album = song?.album ?: "",
                     coverArtUrl = song?.coverArt?.let { musicRepository.getCoverArtUrl(it, 600) },
                     isPlaying = nowPlaying.isPlaying,
-                    duration = duration,
-                    currentPosition = position,
-                    progress = if (duration > 0) position.toFloat() / duration else 0f,
+                    duration = nowPlaying.duration,
                     isFavorite = song?.starred != null
                 )
             }

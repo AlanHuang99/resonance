@@ -14,13 +14,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.resonance.music.playback.NowPlaying
 import com.resonance.music.ui.components.MarqueeText
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun MiniPlayer(
     nowPlaying: NowPlaying,
+    positionFlow: StateFlow<Long>,
     coverArtUrl: String?,
     onPlayerClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
@@ -36,17 +39,7 @@ fun MiniPlayer(
         shadowElevation = 4.dp
     ) {
         Column {
-            // Progress indicator
-            val progress = if (nowPlaying.duration > 0) {
-                nowPlaying.position.toFloat() / nowPlaying.duration
-            } else 0f
-
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(2.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            MiniPlayerProgress(positionFlow = positionFlow, duration = nowPlaying.duration)
 
             Row(
                 modifier = Modifier
@@ -111,4 +104,16 @@ fun MiniPlayer(
             }
         }
     }
+}
+
+@Composable
+private fun MiniPlayerProgress(positionFlow: StateFlow<Long>, duration: Long) {
+    val position by positionFlow.collectAsStateWithLifecycle()
+    val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    LinearProgressIndicator(
+        progress = { progress },
+        modifier = Modifier.fillMaxWidth().height(2.dp),
+        color = MaterialTheme.colorScheme.primary,
+        trackColor = MaterialTheme.colorScheme.surfaceVariant
+    )
 }

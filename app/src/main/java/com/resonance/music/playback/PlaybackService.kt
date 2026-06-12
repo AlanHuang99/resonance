@@ -1,11 +1,8 @@
 package com.resonance.music.playback
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
-import android.os.Build
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
@@ -13,22 +10,20 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import com.resonance.music.MainActivity
 
-@AndroidEntryPoint
+/**
+ * Owns the ExoPlayer and MediaSession. The UI never touches the player directly;
+ * it connects a MediaController to this session via [PlaybackManager].
+ */
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
-    private var player: ExoPlayer? = null
-
-    @Inject
-    lateinit var playbackManager: PlaybackManager
 
     override fun onCreate() {
         super.onCreate()
 
-        val exoPlayer = ExoPlayer.Builder(this)
+        val player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -39,87 +34,54 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
 
+        // Skip past unplayable tracks instead of crashing, with a small guard
+        // against an infinite skip loop when many tracks fail in a row.
         var consecutiveFailures = 0
-
-        // Add error listener to prevent unhandled crashes
-        exoPlayer.addListener(object : Player.Listener {
+        player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "Playback error: ${error.message}", error)
                 consecutiveFailures++
                 if (consecutiveFailures > 3) {
-                    Log.e("PlaybackService", "Too many consecutive playback errors, pausing to prevent infinite loop")
-                    exoPlayer.pause()
+                    player.pause()
                     return
                 }
-                
-                // Try to skip to next track on error instead of crashing
-                if (exoPlayer.hasNextMediaItem()) {
-                    exoPlayer.seekToNextMediaItem()
-                    exoPlayer.prepare()
-                    exoPlayer.play()
+                if (player.hasNextMediaItem()) {
+                    player.seekToNextMediaItem()
+                    player.prepare()
+                    player.play()
                 }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    consecutiveFailures = 0 // Reset on successful playback
-                }
+                if (playbackState == Player.STATE_READY) consecutiveFailures = 0
             }
         })
 
-        player = exoPlayer
-        mediaSession = MediaSession.Builder(this, exoPlayer).build()
-
-        playbackManager.initialize(exoPlayer)
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(buildContentIntent())
+            .build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
-        return mediaSession
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Ensure we promote to foreground quickly to avoid
-        // ForegroundServiceDidNotStartInTimeException.
-        // MediaSessionService normally handles this, but under heavy load it can
-        // be delayed. Post a temporary notification as a safety net.
-        try {
-            ensureNotificationChannel()
-            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Resonance")
-                .setContentText("Preparing playback…")
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setSilent(true)
-                .build()
-            startForeground(NOTIFICATION_ID, notification)
-        } catch (e: Exception) {
-            Log.w("PlaybackService", "Could not promote to foreground early", e)
+    // Tapping the media notification opens the app.
+    private fun buildContentIntent(): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        return super.onStartCommand(intent, flags, startId)
+        return PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
-    private fun ensureNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(NotificationManager::class.java)
-            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID, "Playback", NotificationManager.IMPORTANCE_LOW
-                )
-                nm.createNotificationChannel(channel)
-            }
-        }
-    }
-
-    companion object {
-        private const val CHANNEL_ID = "resonance_playback"
-        private const val NOTIFICATION_ID = 1
-    }
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val p = mediaSession?.player
         if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
             stopSelf()
         }
-        // If music is still playing, the foreground service keeps running
     }
 
     override fun onDestroy() {
@@ -128,8 +90,6 @@ class PlaybackService : MediaSessionService() {
             release()
         }
         mediaSession = null
-        player = null
-        playbackManager.onServiceDestroyed()
         super.onDestroy()
     }
 }
