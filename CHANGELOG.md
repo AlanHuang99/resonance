@@ -2,6 +2,12 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.5.1] - 2026-06-12
+
+### Fixed
+- Pull-to-refresh indicator no longer lingers at the top of Home and Library when idle
+- Lyrics screen shows "No lyrics available" instead of a blank page when a track has no lyrics
+
 ## [0.5.0] - 2026-06-12
 
 ### Added

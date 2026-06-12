@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,7 +118,14 @@ fun HomeScreen(
               }
               PullToRefreshContainer(
                   state = pullState,
-                  modifier = Modifier.align(Alignment.TopCenter)
+                  // The 1.2.x container draws its circle even at rest; fade it with the
+                  // pull progress so it only appears while pulling or refreshing.
+                  modifier = Modifier
+                      .align(Alignment.TopCenter)
+                      .graphicsLayer {
+                          alpha = if (pullState.isRefreshing) 1f
+                                  else pullState.progress.coerceIn(0f, 1f)
+                      }
               )
             }
         }

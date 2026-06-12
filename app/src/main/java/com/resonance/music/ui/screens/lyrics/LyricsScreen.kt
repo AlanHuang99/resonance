@@ -131,7 +131,7 @@ fun LyricsScreen(
                     }
                 }
 
-                uiState.lines.isEmpty() && uiState.plainLyrics == null -> {
+                uiState.lines.isEmpty() && uiState.plainLyrics.isNullOrBlank() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center

@@ -16,6 +16,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -91,7 +92,14 @@ fun LibraryScreen(
                     }
                     PullToRefreshContainer(
                         state = pullState,
-                        modifier = Modifier.align(Alignment.TopCenter)
+                        // The 1.2.x container draws its circle even at rest; fade it with the
+                        // pull progress so it only appears while pulling or refreshing.
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .graphicsLayer {
+                                alpha = if (pullState.isRefreshing) 1f
+                                        else pullState.progress.coerceIn(0f, 1f)
+                            }
                     )
                 }
             }
