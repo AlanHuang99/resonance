@@ -22,22 +22,32 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // From-source builds (e.g. F-Droid) have no signing material; only wire up a
+    // release signing config when it's actually provided — via a local
+    // signing.properties or CI environment variables. Otherwise the release build
+    // stays unsigned and still compiles, so it can be built from source and signed
+    // downstream.
+    val hasReleaseSigning = rootProject.file("signing.properties").exists() ||
+        System.getenv("SIGNING_KEYSTORE") != null
+
     signingConfigs {
-        create("release") {
-            val props = rootProject.file("signing.properties")
-            if (props.exists()) {
-                val signingProps = Properties()
-                props.inputStream().use { signingProps.load(it) }
-                storeFile = rootProject.file(signingProps["storeFile"] as String)
-                storePassword = signingProps["storePassword"] as String
-                keyAlias = signingProps["keyAlias"] as String
-                keyPassword = signingProps["keyPassword"] as String
-            } else {
-                // Fallback: env vars for CI
-                storeFile = rootProject.file(System.getenv("SIGNING_KEYSTORE") ?: "release.keystore")
-                storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "resonance"
-                keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
+        if (hasReleaseSigning) {
+            create("release") {
+                val props = rootProject.file("signing.properties")
+                if (props.exists()) {
+                    val signingProps = Properties()
+                    props.inputStream().use { signingProps.load(it) }
+                    storeFile = rootProject.file(signingProps["storeFile"] as String)
+                    storePassword = signingProps["storePassword"] as String
+                    keyAlias = signingProps["keyAlias"] as String
+                    keyPassword = signingProps["keyPassword"] as String
+                } else {
+                    // CI: keystore path + secrets from environment variables.
+                    storeFile = rootProject.file(System.getenv("SIGNING_KEYSTORE"))
+                    storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+                    keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "resonance"
+                    keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
+                }
             }
         }
     }
@@ -46,7 +56,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
