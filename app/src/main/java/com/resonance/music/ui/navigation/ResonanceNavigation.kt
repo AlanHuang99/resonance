@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -115,31 +117,44 @@ fun ResonanceNavHost(
                 }
 
                 if (showBottomBar) {
-                    NavigationBar {
-                        NavigationBarItem(
-                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                            label = { Text("Home") },
-                            selected = currentRoute == Routes.HOME,
-                            onClick = { onTabSelected(Routes.HOME) }
-                        )
-                        NavigationBarItem(
-                            icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            label = { Text("Search") },
-                            selected = currentRoute == Routes.SEARCH,
-                            onClick = { onTabSelected(Routes.SEARCH) }
-                        )
-                        NavigationBarItem(
-                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text("Library") },
-                            selected = currentRoute == Routes.LIBRARY,
-                            onClick = { onTabSelected(Routes.LIBRARY) }
-                        )
-                        NavigationBarItem(
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text("Settings") },
-                            selected = currentRoute == Routes.SETTINGS,
-                            onClick = { onTabSelected(Routes.SETTINGS) }
-                        )
+                    // A compact bottom bar: the M3 NavigationBar is a fixed 80dp, so
+                    // run it transparent at 64dp inside a Surface that carries the
+                    // bar colour, and add the system nav-bar inset back as a spacer
+                    // below it (correct on both gesture- and 3-button-nav devices).
+                    Surface(color = NavigationBarDefaults.containerColor) {
+                        Column {
+                            NavigationBar(
+                                modifier = Modifier.height(64.dp),
+                                containerColor = Color.Transparent,
+                                windowInsets = WindowInsets(0, 0, 0, 0)
+                            ) {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                                    label = { Text("Home") },
+                                    selected = currentRoute == Routes.HOME,
+                                    onClick = { onTabSelected(Routes.HOME) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    label = { Text("Search") },
+                                    selected = currentRoute == Routes.SEARCH,
+                                    onClick = { onTabSelected(Routes.SEARCH) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
+                                    label = { Text("Library") },
+                                    selected = currentRoute == Routes.LIBRARY,
+                                    onClick = { onTabSelected(Routes.LIBRARY) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                                    label = { Text("Settings") },
+                                    selected = currentRoute == Routes.SETTINGS,
+                                    onClick = { onTabSelected(Routes.SETTINGS) }
+                                )
+                            }
+                            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        }
                     }
                 }
             }

@@ -1,0 +1,2 @@
+In 0.5.2:
+- Slimmer top bar and a more compact bottom navigation, leaving more room for content

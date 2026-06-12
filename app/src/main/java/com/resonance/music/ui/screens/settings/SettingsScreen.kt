@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.resonance.music.BuildConfig
+import com.resonance.music.ui.components.SlimTopBar
 import com.resonance.music.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +54,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Settings") })
+            SlimTopBar("Settings")
         }
     ) { padding ->
         Column(

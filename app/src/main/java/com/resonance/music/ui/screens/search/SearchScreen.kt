@@ -10,9 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.resonance.music.ui.components.AlbumListItem
+import com.resonance.music.ui.components.SlimTopBar
 import com.resonance.music.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,36 +29,32 @@ fun SearchScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    TextField(
-                        value = uiState.query,
-                        onValueChange = viewModel::onQueryChange,
-                        placeholder = { Text("Search artists, albums, songs...") },
-                        singleLine = true,
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                navigationIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.padding(start = 12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                actions = {
-                    if (uiState.query.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear")
-                        }
+            SlimTopBar(height = 56.dp) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = 8.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextField(
+                    value = uiState.query,
+                    onValueChange = viewModel::onQueryChange,
+                    placeholder = { Text("Search artists, albums, songs...") },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                if (uiState.query.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.onQueryChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear")
                     }
                 }
-            )
+            }
         }
     ) { padding ->
         if (uiState.isLoading) {

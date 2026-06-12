@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.resonance.music.ui.components.AlbumCard
 import com.resonance.music.ui.components.AlbumListItem
+import com.resonance.music.ui.components.SlimTopBar
 import com.resonance.music.ui.components.SongListItem
 
 enum class LibraryTab { Artists, Albums, Genres, Playlists, Favorites }
@@ -60,7 +61,7 @@ fun LibraryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Library") })
+            SlimTopBar("Library")
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {

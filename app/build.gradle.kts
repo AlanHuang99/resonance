@@ -16,8 +16,8 @@ android {
         applicationId = "com.resonance.music"
         minSdk = 31
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.5.1"
+        versionCode = 8
+        versionName = "0.5.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -2,6 +2,11 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.5.2] - 2026-06-12
+
+### Changed
+- Slimmer top bar and a more compact bottom navigation, leaving more room for content
+
 ## [0.5.1] - 2026-06-12
 
 ### Fixed

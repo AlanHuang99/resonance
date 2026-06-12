@@ -30,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.resonance.music.data.api.models.AlbumItem
 import com.resonance.music.ui.components.AlbumCard
+import com.resonance.music.ui.components.SlimTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Resonance") })
+            SlimTopBar("Resonance")
         }
     ) { padding ->
         when {
