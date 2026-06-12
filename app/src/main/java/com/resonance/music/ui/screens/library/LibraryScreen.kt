@@ -11,9 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,6 +49,14 @@ fun LibraryScreen(
         }
     }
 
+    val pullState = rememberPullToRefreshState()
+    if (pullState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh(selectedTab)
+            pullState.endRefresh()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Library") })
@@ -70,12 +81,18 @@ fun LibraryScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                when (selectedTab) {
-                    LibraryTab.Artists -> ArtistsTab(uiState, onArtistClick)
-                    LibraryTab.Albums -> AlbumsTab(uiState, onAlbumClick, viewModel::setAlbumSort)
-                    LibraryTab.Genres -> GenresTab(uiState, onGenreClick)
-                    LibraryTab.Playlists -> PlaylistsTab(uiState, onPlaylistClick)
-                    LibraryTab.Favorites -> FavoritesTab(uiState, onAlbumClick, onArtistClick, viewModel)
+                Box(modifier = Modifier.fillMaxSize().nestedScroll(pullState.nestedScrollConnection)) {
+                    when (selectedTab) {
+                        LibraryTab.Artists -> ArtistsTab(uiState, onArtistClick)
+                        LibraryTab.Albums -> AlbumsTab(uiState, onAlbumClick, viewModel::setAlbumSort)
+                        LibraryTab.Genres -> GenresTab(uiState, onGenreClick)
+                        LibraryTab.Playlists -> PlaylistsTab(uiState, onPlaylistClick)
+                        LibraryTab.Favorites -> FavoritesTab(uiState, onAlbumClick, onArtistClick, viewModel)
+                    }
+                    PullToRefreshContainer(
+                        state = pullState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
             }
         }

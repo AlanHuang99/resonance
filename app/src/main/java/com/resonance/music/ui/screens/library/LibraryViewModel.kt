@@ -157,13 +157,54 @@ class LibraryViewModel @Inject constructor(
         playbackManager.playSongs(songs, index)
     }
 
-    fun refreshCurrentTab(tab: LibraryTab) {
-        when (tab) {
-            LibraryTab.Artists -> { artistsLoaded = false; loadArtists() }
-            LibraryTab.Albums -> { albumsLoaded = false; loadAlbums() }
-            LibraryTab.Playlists -> { playlistsLoaded = false; loadPlaylists() }
-            LibraryTab.Genres -> { genresLoaded = false; loadGenres() }
-            LibraryTab.Favorites -> { favoritesLoaded = false; loadFavorites() }
+    /**
+     * Re-fetch the visible tab for pull-to-refresh. Suspends until done so the
+     * caller can stop the refresh indicator, and never flips isLoading — the
+     * current list stays on screen with the pull spinner over it.
+     */
+    suspend fun refresh(tab: LibraryTab) {
+        try {
+            when (tab) {
+                LibraryTab.Artists -> {
+                    val artists = musicRepository.getArtists()
+                    _uiState.value = _uiState.value.copy(
+                        artists = artists, coverArtUrlBuilder = coverArtBuilder, error = null
+                    )
+                    artistsLoaded = true
+                }
+                LibraryTab.Albums -> {
+                    val albums = musicRepository.getAlbumList(_uiState.value.albumSort.type, size = 200)
+                    _uiState.value = _uiState.value.copy(
+                        albums = albums, coverArtUrlBuilder = coverArtBuilder, error = null
+                    )
+                    albumsLoaded = true
+                }
+                LibraryTab.Genres -> {
+                    val genres = musicRepository.getGenres()
+                    _uiState.value = _uiState.value.copy(genres = genres, error = null)
+                    genresLoaded = true
+                }
+                LibraryTab.Playlists -> {
+                    val playlists = musicRepository.getPlaylists()
+                    _uiState.value = _uiState.value.copy(
+                        playlists = playlists, coverArtUrlBuilder = coverArtBuilder, error = null
+                    )
+                    playlistsLoaded = true
+                }
+                LibraryTab.Favorites -> {
+                    val starred = musicRepository.getStarred()
+                    _uiState.value = _uiState.value.copy(
+                        starredArtists = starred.artist ?: emptyList(),
+                        starredAlbums = starred.album ?: emptyList(),
+                        starredSongs = starred.song ?: emptyList(),
+                        coverArtUrlBuilder = coverArtBuilder,
+                        error = null
+                    )
+                    favoritesLoaded = true
+                }
+            }
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(error = e.localizedMessage)
         }
     }
 }

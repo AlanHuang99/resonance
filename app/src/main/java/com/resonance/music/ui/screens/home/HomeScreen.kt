@@ -14,12 +14,15 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,6 +47,14 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadHome()
+    }
+
+    val pullState = rememberPullToRefreshState()
+    if (pullState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh()
+            pullState.endRefresh()
+        }
     }
 
     Scaffold(
@@ -73,8 +84,14 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize().padding(padding)
             )
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .nestedScroll(pullState.nestedScrollConnection)
+            ) {
+              LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 12.dp)
             ) {
                 item(key = "greeting") {
@@ -111,6 +128,11 @@ fun HomeScreen(
                 albumShelf("newest", "Newest additions", uiState.newestAlbums, onAlbumClick, onSeeAllClick, coverArtUrlBuilder)
                 albumShelf("frequent", "Most played", uiState.frequentAlbums, onAlbumClick, onSeeAllClick, coverArtUrlBuilder)
                 albumShelf("random", "Random picks", uiState.randomAlbums, onAlbumClick, onSeeAllClick, coverArtUrlBuilder)
+              }
+              PullToRefreshContainer(
+                  state = pullState,
+                  modifier = Modifier.align(Alignment.TopCenter)
+              )
             }
         }
     }
