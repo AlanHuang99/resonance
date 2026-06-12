@@ -27,6 +27,16 @@ class MusicRepository @Inject constructor(
         return env.artist
     }
 
+    /** Artist biography + similar artists. Best-effort: older servers lack getArtistInfo2. */
+    suspend fun getArtistInfo(id: String): ArtistInfo2? {
+        return try {
+            val root = api.getArtistInfo2(id)
+            if (!root.response.isOk) null else root.response.artistInfo2
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     // --- Albums ---
 
     suspend fun getAlbumList(type: String, size: Int = 20, offset: Int = 0): List<AlbumItem> {

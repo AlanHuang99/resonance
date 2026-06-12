@@ -3,6 +3,7 @@ package com.resonance.music.ui.screens.artist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.api.models.AlbumItem
+import com.resonance.music.data.api.models.ArtistItem
 import com.resonance.music.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,8 @@ data class ArtistUiState(
     val albums: List<AlbumItem> = emptyList(),
     val coverArtUrlBuilder: ((String) -> String?)? = null,
     val isFavorite: Boolean = false,
+    val biography: String? = null,
+    val similarArtists: List<ArtistItem> = emptyList(),
     val error: String? = null
 )
 
@@ -51,12 +54,23 @@ class ArtistViewModel @Inject constructor(
                         coverArtUrlBuilder = coverArtBuilder,
                         isFavorite = artist.starred != null
                     )
+                    loadArtistInfo(artistId)
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = "Artist not found")
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
+        }
+    }
+
+    private fun loadArtistInfo(id: String) {
+        viewModelScope.launch {
+            val info = musicRepository.getArtistInfo(id) ?: return@launch
+            _uiState.value = _uiState.value.copy(
+                biography = info.biography?.replace(Regex("<[^>]*>"), "")?.trim()?.takeIf { it.isNotEmpty() },
+                similarArtists = info.similarArtist ?: emptyList()
+            )
         }
     }
 

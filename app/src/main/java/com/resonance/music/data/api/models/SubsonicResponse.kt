@@ -25,6 +25,7 @@ data class SubsonicEnvelope(
     // Browsing
     val artists: ArtistsContainer? = null,
     val artist: ArtistDetail? = null,
+    val artistInfo2: ArtistInfo2? = null,
     val album: AlbumDetail? = null,
 
     // Album lists
@@ -83,6 +84,14 @@ data class ArtistDetail(
     val albumCount: Int? = null,
     val starred: String? = null,
     val album: List<AlbumItem>? = null
+)
+
+data class ArtistInfo2(
+    val biography: String? = null,
+    val smallImageUrl: String? = null,
+    val mediumImageUrl: String? = null,
+    val largeImageUrl: String? = null,
+    val similarArtist: List<ArtistItem>? = null
 )
 
 data class AlbumDetail(

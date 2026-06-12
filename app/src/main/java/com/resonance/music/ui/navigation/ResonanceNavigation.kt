@@ -212,7 +212,8 @@ fun ResonanceNavHost(
                 ArtistScreen(
                     artistId = backStackEntry.arguments?.getString("artistId") ?: "",
                     onBackClick = { navController.popBackStack() },
-                    onAlbumClick = { navController.navigate(Routes.album(it)) }
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onArtistClick = { navController.navigate(Routes.artist(it)) }
                 )
             }
 

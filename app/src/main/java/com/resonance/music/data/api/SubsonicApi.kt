@@ -19,6 +19,12 @@ interface SubsonicApi {
     @GET("rest/getArtist")
     suspend fun getArtist(@Query("id") id: String): SubsonicRoot
 
+    @GET("rest/getArtistInfo2")
+    suspend fun getArtistInfo2(
+        @Query("id") id: String,
+        @Query("count") count: Int = 12
+    ): SubsonicRoot
+
     @GET("rest/getAlbum")
     suspend fun getAlbum(@Query("id") id: String): SubsonicRoot
 
