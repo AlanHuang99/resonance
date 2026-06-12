@@ -31,6 +31,9 @@ data class SubsonicEnvelope(
     // Album lists
     val albumList2: AlbumListContainer? = null,
 
+    // Genres
+    val genres: GenresContainer? = null,
+
     // Search
     val searchResult3: SearchResult? = null,
 
@@ -146,6 +149,18 @@ data class SongItem(
 
 data class AlbumListContainer(
     val album: List<AlbumItem>?
+)
+
+// --- Genres ---
+
+data class GenresContainer(
+    val genre: List<GenreItem>? = null
+)
+
+data class GenreItem(
+    @SerializedName("value") val name: String,
+    val songCount: Int? = null,
+    val albumCount: Int? = null
 )
 
 // --- Search ---

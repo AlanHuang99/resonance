@@ -1,5 +1,6 @@
 package com.resonance.music.ui.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,6 +21,7 @@ import com.resonance.music.playback.PlaybackManager
 import com.resonance.music.ui.components.MiniPlayer
 import com.resonance.music.ui.screens.album.AlbumScreen
 import com.resonance.music.ui.screens.artist.ArtistScreen
+import com.resonance.music.ui.screens.genre.GenreScreen
 import com.resonance.music.ui.screens.home.HomeScreen
 import com.resonance.music.ui.screens.library.LibraryScreen
 import com.resonance.music.ui.screens.login.LoginScreen
@@ -42,10 +44,12 @@ object Routes {
     const val ALBUM = "album/{albumId}"
     const val ARTIST = "artist/{artistId}"
     const val PLAYLIST = "playlist/{playlistId}"
+    const val GENRE = "genre/{genre}"
 
     fun album(id: String) = "album/$id"
     fun artist(id: String) = "artist/$id"
     fun playlist(id: String) = "playlist/$id"
+    fun genre(name: String) = "genre/${Uri.encode(name)}"
 }
 
 @Composable
@@ -149,7 +153,8 @@ fun ResonanceNavHost(
                 LibraryScreen(
                     onArtistClick = { navController.navigate(Routes.artist(it)) },
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
-                    onPlaylistClick = { navController.navigate(Routes.playlist(it)) }
+                    onPlaylistClick = { navController.navigate(Routes.playlist(it)) },
+                    onGenreClick = { navController.navigate(Routes.genre(it)) }
                 )
             }
 
@@ -226,6 +231,17 @@ fun ResonanceNavHost(
                     onBackClick = { navController.popBackStack() },
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
                     onArtistClick = { navController.navigate(Routes.artist(it)) }
+                )
+            }
+
+            composable(
+                route = Routes.GENRE,
+                arguments = listOf(navArgument("genre") { type = NavType.StringType })
+            ) { backStackEntry ->
+                GenreScreen(
+                    genre = backStackEntry.arguments?.getString("genre") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) }
                 )
             }
         }

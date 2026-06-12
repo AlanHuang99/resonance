@@ -143,6 +143,7 @@ private fun LazyListScope.albumShelf(
                     AlbumCard(
                         album = album,
                         coverArtUrl = album.coverArt?.let { coverArtUrlBuilder(it) },
+                        modifier = Modifier.width(160.dp),
                         onClick = { onAlbumClick(album.id) }
                     )
                 }

@@ -39,11 +39,21 @@ class MusicRepository @Inject constructor(
 
     // --- Albums ---
 
-    suspend fun getAlbumList(type: String, size: Int = 20, offset: Int = 0): List<AlbumItem> {
-        val root = api.getAlbumList(type, size, offset)
+    suspend fun getAlbumList(type: String, size: Int = 20, offset: Int = 0, genre: String? = null): List<AlbumItem> {
+        val root = api.getAlbumList(type, size, offset, genre)
         val env = root.response
         if (!env.isOk) throw SubsonicException(env.error)
         return env.albumList2?.album ?: emptyList()
+    }
+
+    suspend fun getAlbumsByGenre(genre: String, size: Int = 100, offset: Int = 0): List<AlbumItem> =
+        getAlbumList("byGenre", size, offset, genre)
+
+    suspend fun getGenres(): List<GenreItem> {
+        val root = api.getGenres()
+        val env = root.response
+        if (!env.isOk) throw SubsonicException(env.error)
+        return env.genres?.genre?.sortedByDescending { it.albumCount ?: 0 } ?: emptyList()
     }
 
     suspend fun getRecentAlbums(size: Int = 20): List<AlbumItem> = getAlbumList("recent", size)

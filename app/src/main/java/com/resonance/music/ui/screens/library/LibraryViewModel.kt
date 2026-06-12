@@ -12,10 +12,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class AlbumSort(val type: String, val label: String) {
+    AZ("alphabeticalByName", "A–Z"),
+    NEWEST("newest", "Recently added"),
+    RECENT("recent", "Recently played"),
+    FREQUENT("frequent", "Most played"),
+    RANDOM("random", "Random")
+}
+
 data class LibraryUiState(
     val isLoading: Boolean = false,
     val artists: List<ArtistItem> = emptyList(),
     val albums: List<AlbumItem> = emptyList(),
+    val albumSort: AlbumSort = AlbumSort.AZ,
+    val genres: List<GenreItem> = emptyList(),
     val playlists: List<PlaylistItem> = emptyList(),
     val starredArtists: List<ArtistItem> = emptyList(),
     val starredAlbums: List<AlbumItem> = emptyList(),
@@ -37,6 +47,7 @@ class LibraryViewModel @Inject constructor(
     private var albumsLoaded = false
     private var playlistsLoaded = false
     private var favoritesLoaded = false
+    private var genresLoaded = false
 
     // One stable instance so UiState copies compare equal (a fresh lambda each
     // copy would break equality and force recomposition). 128px suits 48dp rows.
@@ -62,31 +73,40 @@ class LibraryViewModel @Inject constructor(
 
     fun loadAlbums() {
         if (albumsLoaded) return
+        albumsLoaded = true
+        loadAlbumsWith(_uiState.value.albumSort)
+    }
+
+    fun setAlbumSort(sort: AlbumSort) {
+        if (sort == _uiState.value.albumSort) return
+        _uiState.value = _uiState.value.copy(albumSort = sort)
+        loadAlbumsWith(sort)
+    }
+
+    private fun loadAlbumsWith(sort: AlbumSort) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                // Load albums in batches to avoid a single huge API call
-                val allAlbums = mutableListOf<AlbumItem>()
-                var offset = 0
-                val batchSize = 100
-                while (true) {
-                    val batch = musicRepository.getAlbumList("alphabeticalByName", size = batchSize, offset = offset)
-                    allAlbums.addAll(batch)
-                    if (batch.size < batchSize) break
-                    offset += batchSize
-                    // Show partial results after each batch
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        albums = allAlbums.toList(),
-                        coverArtUrlBuilder = coverArtBuilder
-                    )
-                }
+                val albums = musicRepository.getAlbumList(sort.type, size = 200)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    albums = allAlbums,
+                    albums = albums,
                     coverArtUrlBuilder = coverArtBuilder
                 )
-                albumsLoaded = true
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
+            }
+        }
+    }
+
+    fun loadGenres() {
+        if (genresLoaded) return
+        genresLoaded = true
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                val genres = musicRepository.getGenres()
+                _uiState.value = _uiState.value.copy(isLoading = false, genres = genres)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
@@ -142,6 +162,7 @@ class LibraryViewModel @Inject constructor(
             LibraryTab.Artists -> { artistsLoaded = false; loadArtists() }
             LibraryTab.Albums -> { albumsLoaded = false; loadAlbums() }
             LibraryTab.Playlists -> { playlistsLoaded = false; loadPlaylists() }
+            LibraryTab.Genres -> { genresLoaded = false; loadGenres() }
             LibraryTab.Favorites -> { favoritesLoaded = false; loadFavorites() }
         }
     }

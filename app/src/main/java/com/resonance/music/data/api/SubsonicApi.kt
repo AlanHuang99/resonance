@@ -34,8 +34,12 @@ interface SubsonicApi {
     suspend fun getAlbumList(
         @Query("type") type: String,
         @Query("size") size: Int = 20,
-        @Query("offset") offset: Int = 0
+        @Query("offset") offset: Int = 0,
+        @Query("genre") genre: String? = null
     ): SubsonicRoot
+
+    @GET("rest/getGenres")
+    suspend fun getGenres(): SubsonicRoot
 
     @GET("rest/getRandomSongs")
     suspend fun getRandomSongs(

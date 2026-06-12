@@ -3,6 +3,9 @@ package com.resonance.music.ui.screens.library
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -14,10 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.resonance.music.ui.components.AlbumCard
 import com.resonance.music.ui.components.AlbumListItem
 import com.resonance.music.ui.components.SongListItem
 
-enum class LibraryTab { Artists, Albums, Playlists, Favorites }
+enum class LibraryTab { Artists, Albums, Genres, Playlists, Favorites }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,6 +29,7 @@ fun LibraryScreen(
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String) -> Unit,
     onPlaylistClick: (String) -> Unit,
+    onGenreClick: (String) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     var selectedTab by remember { mutableStateOf(LibraryTab.Artists) }
@@ -35,6 +40,7 @@ fun LibraryScreen(
         when (selectedTab) {
             LibraryTab.Artists -> viewModel.loadArtists()
             LibraryTab.Albums -> viewModel.loadAlbums()
+            LibraryTab.Genres -> viewModel.loadGenres()
             LibraryTab.Playlists -> viewModel.loadPlaylists()
             LibraryTab.Favorites -> viewModel.loadFavorites()
         }
@@ -46,7 +52,7 @@ fun LibraryScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = selectedTab.ordinal) {
+            ScrollableTabRow(selectedTabIndex = selectedTab.ordinal, edgePadding = 0.dp) {
                 LibraryTab.entries.forEach { tab ->
                     Tab(
                         selected = selectedTab == tab,
@@ -66,7 +72,8 @@ fun LibraryScreen(
             } else {
                 when (selectedTab) {
                     LibraryTab.Artists -> ArtistsTab(uiState, onArtistClick)
-                    LibraryTab.Albums -> AlbumsTab(uiState, onAlbumClick)
+                    LibraryTab.Albums -> AlbumsTab(uiState, onAlbumClick, viewModel::setAlbumSort)
+                    LibraryTab.Genres -> GenresTab(uiState, onGenreClick)
                     LibraryTab.Playlists -> PlaylistsTab(uiState, onPlaylistClick)
                     LibraryTab.Favorites -> FavoritesTab(uiState, onAlbumClick, onArtistClick, viewModel)
                 }
@@ -100,16 +107,70 @@ private fun ArtistsTab(uiState: LibraryUiState, onArtistClick: (String) -> Unit)
 }
 
 @Composable
-private fun AlbumsTab(uiState: LibraryUiState, onAlbumClick: (String) -> Unit) {
-    if (uiState.albums.isEmpty()) {
-        EmptyState(Icons.Default.Album, "Albums", "No albums found")
+private fun AlbumsTab(
+    uiState: LibraryUiState,
+    onAlbumClick: (String) -> Unit,
+    onSortChange: (AlbumSort) -> Unit
+) {
+    Column {
+        var menuOpen by remember { mutableStateOf(false) }
+        Box(modifier = Modifier.padding(start = 8.dp, top = 4.dp)) {
+            TextButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(uiState.albumSort.label)
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                AlbumSort.entries.forEach { sort ->
+                    DropdownMenuItem(
+                        text = { Text(sort.label) },
+                        onClick = {
+                            menuOpen = false
+                            onSortChange(sort)
+                        },
+                        trailingIcon = {
+                            if (sort == uiState.albumSort) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        if (uiState.albums.isEmpty()) {
+            EmptyState(Icons.Default.Album, "Albums", "No albums found")
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(150.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(uiState.albums, key = { it.id }) { album ->
+                    AlbumCard(
+                        album = album,
+                        coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onAlbumClick(album.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenresTab(uiState: LibraryUiState, onGenreClick: (String) -> Unit) {
+    if (uiState.genres.isEmpty()) {
+        EmptyState(Icons.Default.Category, "Genres", "No genres found")
     } else {
         LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
-            items(uiState.albums, key = { it.id }, contentType = { "album" }) { album ->
-                AlbumListItem(
-                    album = album,
-                    coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },
-                    onClick = { onAlbumClick(album.id) }
+            items(uiState.genres, key = { it.name }, contentType = { "genre" }) { genre ->
+                ListItem(
+                    headlineContent = { Text(genre.name) },
+                    supportingContent = { genre.albumCount?.let { Text("$it albums") } },
+                    leadingContent = { Icon(Icons.Default.Category, contentDescription = null) },
+                    modifier = Modifier.clickable { onGenreClick(genre.name) }
                 )
             }
         }
