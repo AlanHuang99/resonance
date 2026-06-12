@@ -1,6 +1,7 @@
 package com.resonance.music.ui.screens.lyrics
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -173,7 +174,11 @@ fun LyricsScreen(
                                 } else {
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 },
-                                textAlign = TextAlign.Start
+                                textAlign = TextAlign.Start,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.seekTo(line.startMs) }
+                                    .padding(vertical = 4.dp)
                             )
                         }
                     }

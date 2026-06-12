@@ -102,6 +102,10 @@ class LyricsViewModel @Inject constructor(
         }
     }
 
+    fun seekTo(positionMs: Long) {
+        playbackManager.seekTo(positionMs)
+    }
+
     fun updateCurrentPosition() {
         if (!_uiState.value.isSynced) return
         val lines = _uiState.value.lines

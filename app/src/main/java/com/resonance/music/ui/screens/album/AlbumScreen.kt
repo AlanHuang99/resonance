@@ -64,6 +64,9 @@ fun AlbumScreen(
                 CircularProgressIndicator()
             }
         } else {
+            val multiDisc = remember(uiState.songs) {
+                uiState.songs.mapNotNull { it.discNumber }.distinct().size > 1
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 80.dp)
@@ -144,13 +147,23 @@ fun AlbumScreen(
 
                 // Song list
                 itemsIndexed(uiState.songs, key = { _, song -> song.id }) { index, song ->
-                    SongListItem(
-                        song = song,
-                        trackNumber = song.track,
-                        onClick = { viewModel.playSongAt(index) },
-                        onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
-                        onGoToAlbum = song.albumId?.let { id -> onAlbumClick?.let { nav -> { nav(id) } } }
-                    )
+                    Column {
+                        if (multiDisc && (index == 0 || uiState.songs[index - 1].discNumber != song.discNumber)) {
+                            Text(
+                                text = "Disc ${song.discNumber ?: 1}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+                            )
+                        }
+                        SongListItem(
+                            song = song,
+                            trackNumber = song.track,
+                            onClick = { viewModel.playSongAt(index) },
+                            onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                            onGoToAlbum = song.albumId?.let { id -> onAlbumClick?.let { nav -> { nav(id) } } }
+                        )
+                    }
                 }
             }
         }
