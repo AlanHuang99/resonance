@@ -98,7 +98,7 @@ fun SearchScreen(
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    items(uiState.artists) { artist ->
+                    items(uiState.artists, key = { "artist_${it.id}" }) { artist ->
                         ListItem(
                             headlineContent = { Text(artist.name) },
                             leadingContent = {
@@ -118,7 +118,7 @@ fun SearchScreen(
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    items(uiState.albums) { album ->
+                    items(uiState.albums, key = { "album_${it.id}" }) { album ->
                         AlbumListItem(
                             album = album,
                             coverArtUrl = null,
@@ -136,7 +136,7 @@ fun SearchScreen(
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    items(uiState.songs) { song ->
+                    items(uiState.songs, key = { "song_${it.id}" }) { song ->
                         SongListItem(
                             song = song,
                             onClick = { viewModel.playSong(song) }

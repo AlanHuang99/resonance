@@ -153,7 +153,7 @@ fun PlaylistScreen(
                 }
 
                 // Song list
-                itemsIndexed(uiState.songs) { index, song ->
+                itemsIndexed(uiState.songs, key = { index, song -> "${song.id}_$index" }) { index, song ->
                     SongListItem(
                         song = song,
                         trackNumber = index + 1,

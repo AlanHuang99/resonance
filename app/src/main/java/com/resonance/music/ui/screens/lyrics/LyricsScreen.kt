@@ -160,7 +160,7 @@ fun LyricsScreen(
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 32.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(uiState.lines) { index, line ->
+                        itemsIndexed(uiState.lines, key = { index, _ -> index }) { index, line ->
                             val isActive = index == uiState.currentLineIndex
                             Text(
                                 text = line.text,

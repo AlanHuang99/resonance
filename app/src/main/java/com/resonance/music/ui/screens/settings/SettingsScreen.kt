@@ -84,7 +84,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
-                items(AppTheme.entries.toList()) { theme ->
+                items(AppTheme.entries.toList(), key = { it.name }) { theme ->
                     ThemeCard(
                         theme = theme,
                         isSelected = theme == uiState.currentTheme,

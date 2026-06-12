@@ -134,7 +134,7 @@ fun AlbumScreen(
                 }
 
                 // Song list
-                itemsIndexed(uiState.songs) { index, song ->
+                itemsIndexed(uiState.songs, key = { _, song -> song.id }) { index, song ->
                     SongListItem(
                         song = song,
                         trackNumber = song.track,

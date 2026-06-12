@@ -81,7 +81,7 @@ fun ResonanceNavHost(
                     MiniPlayer(
                         nowPlaying = nowPlaying,
                         coverArtUrl = nowPlaying.song?.coverArt?.let {
-                            musicRepository.getCoverArtUrl(it)
+                            musicRepository.getCoverArtUrl(it, 128)
                         },
                         onPlayerClick = {
                             navController.navigate(Routes.PLAYER) { launchSingleTop = true }

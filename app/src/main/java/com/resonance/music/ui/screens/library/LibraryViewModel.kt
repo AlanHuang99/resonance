@@ -38,6 +38,10 @@ class LibraryViewModel @Inject constructor(
     private var playlistsLoaded = false
     private var favoritesLoaded = false
 
+    // One stable instance so UiState copies compare equal (a fresh lambda each
+    // copy would break equality and force recomposition). 128px suits 48dp rows.
+    private val coverArtBuilder: (String) -> String? = { musicRepository.getCoverArtUrl(it, 128) }
+
     fun loadArtists() {
         if (artistsLoaded) return
         viewModelScope.launch {
@@ -47,7 +51,7 @@ class LibraryViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     artists = artists,
-                    coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                    coverArtUrlBuilder = coverArtBuilder
                 )
                 artistsLoaded = true
             } catch (e: Exception) {
@@ -74,13 +78,13 @@ class LibraryViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         albums = allAlbums.toList(),
-                        coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                        coverArtUrlBuilder = coverArtBuilder
                     )
                 }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     albums = allAlbums,
-                    coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                    coverArtUrlBuilder = coverArtBuilder
                 )
                 albumsLoaded = true
             } catch (e: Exception) {
@@ -98,7 +102,7 @@ class LibraryViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     playlists = playlists,
-                    coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                    coverArtUrlBuilder = coverArtBuilder
                 )
                 playlistsLoaded = true
             } catch (e: Exception) {
@@ -118,7 +122,7 @@ class LibraryViewModel @Inject constructor(
                     starredArtists = starred.artist ?: emptyList(),
                     starredAlbums = starred.album ?: emptyList(),
                     starredSongs = starred.song ?: emptyList(),
-                    coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                    coverArtUrlBuilder = coverArtBuilder
                 )
                 favoritesLoaded = true
             } catch (e: Exception) {

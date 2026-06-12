@@ -112,7 +112,7 @@ fun ArtistScreen(
                     )
                 }
 
-                items(uiState.albums) { album ->
+                items(uiState.albums, key = { it.id }) { album ->
                     AlbumListItem(
                         album = album,
                         coverArtUrl = album.coverArt?.let { uiState.coverArtUrlBuilder?.invoke(it) },

@@ -29,6 +29,9 @@ class ArtistViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ArtistUiState())
     val uiState: StateFlow<ArtistUiState> = _uiState.asStateFlow()
 
+    // One stable instance so UiState copies compare equal. 128px suits 48dp rows.
+    private val coverArtBuilder: (String) -> String? = { musicRepository.getCoverArtUrl(it, 128) }
+
     fun loadArtist(artistId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -41,7 +44,7 @@ class ArtistViewModel @Inject constructor(
                         imageUrl = artist.coverArt?.let { musicRepository.getCoverArtUrl(it) },
                         albumCount = artist.albumCount ?: artist.album?.size ?: 0,
                         albums = artist.album ?: emptyList(),
-                        coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
+                        coverArtUrlBuilder = coverArtBuilder
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = "Artist not found")
