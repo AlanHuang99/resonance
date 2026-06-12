@@ -25,6 +25,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val coverArtBuilder = remember<(String) -> String?> { { viewModel.getCoverArtUrl(it) } }
 
     Scaffold(
         topBar = {
@@ -121,7 +122,7 @@ fun SearchScreen(
                     items(uiState.albums, key = { "album_${it.id}" }) { album ->
                         AlbumListItem(
                             album = album,
-                            coverArtUrl = null,
+                            coverArtUrl = album.coverArt?.let { coverArtBuilder(it) },
                             onClick = { onAlbumClick(album.id) }
                         )
                     }

@@ -5,7 +5,6 @@ import android.content.Context
 import com.resonance.music.data.api.DynamicBaseUrlInterceptor
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
-import com.resonance.music.data.api.ServerCredentials
 import com.resonance.music.data.api.SubsonicAuthInterceptor
 import com.resonance.music.data.repository.AuthRepository
 import dagger.Module
@@ -13,7 +12,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import com.google.gson.GsonBuilder
@@ -32,14 +30,10 @@ object AppModule {
         @ApplicationContext context: Context,
         authRepository: AuthRepository
     ): OkHttpClient {
-        // Cache credentials to avoid repeated blocking calls. The interceptors run on
-        // OkHttp's I/O threads where a brief runBlocking is acceptable and unavoidable
-        // (interceptors are synchronous). We cache after the first fetch so subsequent
-        // requests never block.
-        var cached: ServerCredentials? = null
-        val credentialsProvider = {
-            cached ?: runBlocking { authRepository.getCredentials() }.also { cached = it }
-        }
+        // Read credentials from AuthRepository's synchronous cache, which is kept
+        // fresh on login/logout — so changing server or re-logging-in takes effect
+        // without an app restart.
+        val credentialsProvider = authRepository::getCachedCredentials
 
         val authInterceptor = SubsonicAuthInterceptor(credentialsProvider)
         val dynamicBaseUrlInterceptor = DynamicBaseUrlInterceptor(credentialsProvider)
@@ -81,9 +75,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSubsonicApiHelper(authRepository: AuthRepository): SubsonicApiHelper {
-        var cached: ServerCredentials? = null
-        return SubsonicApiHelper {
-            cached ?: runBlocking { authRepository.getCredentials() }.also { cached = it }
-        }
+        return SubsonicApiHelper(authRepository::getCachedCredentials)
     }
 }

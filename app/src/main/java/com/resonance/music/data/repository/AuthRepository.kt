@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,15 +40,37 @@ class AuthRepository @Inject constructor(
 
     suspend fun getCredentials(): ServerCredentials? = credentials.first()
 
-    suspend fun saveCredentials(serverUrl: String, username: String, password: String) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.SERVER_URL] = serverUrl.trimEnd('/')
-            prefs[Keys.USERNAME] = username
-            prefs[Keys.PASSWORD] = password
+    // Synchronous credential cache for OkHttp interceptors and media-URL building,
+    // which run on non-suspending threads. Kept in sync by saveCredentials()/logout()
+    // so a re-login or server change takes effect immediately, without an app restart.
+    @Volatile private var cached: ServerCredentials? = null
+    @Volatile private var cacheLoaded = false
+
+    fun getCachedCredentials(): ServerCredentials? {
+        if (cacheLoaded) return cached
+        return synchronized(this) {
+            if (!cacheLoaded) {
+                cached = runBlocking { getCredentials() }
+                cacheLoaded = true
+            }
+            cached
         }
+    }
+
+    suspend fun saveCredentials(serverUrl: String, username: String, password: String) {
+        val creds = ServerCredentials(serverUrl.trimEnd('/'), username, password)
+        context.dataStore.edit { prefs ->
+            prefs[Keys.SERVER_URL] = creds.serverUrl
+            prefs[Keys.USERNAME] = creds.username
+            prefs[Keys.PASSWORD] = creds.password
+        }
+        cached = creds
+        cacheLoaded = true
     }
 
     suspend fun logout() {
         context.dataStore.edit { it.clear() }
+        cached = null
+        cacheLoaded = true
     }
 }

@@ -13,6 +13,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.SongItem
+import com.resonance.music.data.repository.MusicRepository
+import com.resonance.music.data.repository.SettingsStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,7 +47,9 @@ enum class RepeatMode { OFF, ALL, ONE }
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val apiHelper: SubsonicApiHelper
+    private val apiHelper: SubsonicApiHelper,
+    private val musicRepository: MusicRepository,
+    private val settingsStore: SettingsStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -68,6 +73,14 @@ class PlaybackManager @Inject constructor(
 
     private var pendingPlay: Pair<List<SongItem>, Int>? = null
     private var positionJob: Job? = null
+
+    @Volatile private var scrobbleEnabled = true
+    private var nowPlayingScrobbleId: String? = null
+    private var submittedScrobbleId: String? = null
+
+    init {
+        scope.launch { settingsStore.scrobbleEnabled.collect { scrobbleEnabled = it } }
+    }
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -141,6 +154,12 @@ class PlaybackManager @Inject constructor(
             isPlaying = c.isPlaying,
             duration = if (c.duration > 0) c.duration else (song?.duration?.toLong() ?: 0L) * 1000
         )
+        // Report "now playing" to the server once per new track.
+        if (song != null && song.id != nowPlayingScrobbleId) {
+            nowPlayingScrobbleId = song.id
+            submittedScrobbleId = null
+            scrobble(song.id, submission = false)
+        }
     }
 
     fun playSongs(songs: List<SongItem>, startIndex: Int = 0) {
@@ -225,6 +244,7 @@ class PlaybackManager @Inject constructor(
         positionJob = scope.launch {
             while (isActive) {
                 controller?.let { _position.value = it.currentPosition }
+                maybeSubmitScrobble()
                 delay(500)
             }
         }
@@ -233,6 +253,24 @@ class PlaybackManager @Inject constructor(
     private fun stopPositionUpdates() {
         positionJob?.cancel()
         positionJob = null
+    }
+
+    private fun maybeSubmitScrobble() {
+        val song = _nowPlaying.value.song ?: return
+        val duration = _nowPlaying.value.duration
+        if (duration <= 0 || song.id == submittedScrobbleId) return
+        // Submit once the track passes its halfway point or four minutes.
+        if (_position.value >= minOf(duration / 2, 240_000L)) {
+            submittedScrobbleId = song.id
+            scrobble(song.id, submission = true)
+        }
+    }
+
+    private fun scrobble(songId: String, submission: Boolean) {
+        if (!scrobbleEnabled) return
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { musicRepository.scrobble(songId, submission) } }
+        }
     }
 
     private fun buildMediaItem(song: SongItem): MediaItem? {

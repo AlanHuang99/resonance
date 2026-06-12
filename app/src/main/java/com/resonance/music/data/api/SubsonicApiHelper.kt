@@ -4,60 +4,49 @@ import java.net.URLEncoder
 import java.security.MessageDigest
 
 /**
- * Helper to build media URLs (stream, cover art) that need auth params.
+ * Builds media URLs (stream, cover art) that need auth params.
  *
- * Uses a stable per-session salt so that identical requests produce identical URLs,
- * allowing Coil (and HTTP caches) to reuse downloaded images instead of
- * re-fetching on every recomposition.
+ * Uses a stable per-session salt so identical requests produce identical URLs,
+ * letting Coil (and HTTP caches) reuse downloaded images instead of re-fetching.
+ * Auth params are cached per credentials and rebuilt when the credentials change,
+ * so a re-login or server change is picked up without an app restart.
  */
 class SubsonicApiHelper(
     private val credentialsProvider: () -> ServerCredentials?
 ) {
-    // Stable salt + cached auth so that the same (endpoint, id) always yields the same URL.
     private val sessionSalt: String = generateSalt()
+
     private var cachedCreds: ServerCredentials? = null
-    private var cachedToken: String? = null
     private var cachedBaseUrl: String? = null
     private var cachedAuthParams: String? = null
 
-    fun getStreamUrl(songId: String): String? {
-        return buildUrl("rest/stream", mapOf("id" to songId))
-    }
+    fun getStreamUrl(songId: String): String? =
+        buildUrl("rest/stream", mapOf("id" to songId))
 
-    fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? {
-        return buildUrl("rest/getCoverArt", mapOf("id" to coverArtId, "size" to size.toString()))
-    }
-
-    /** Invalidate cached auth so the next URL picks up new credentials. */
-    fun invalidateAuth() {
-        synchronized(this) {
-            cachedCreds = null
-            cachedToken = null
-            cachedBaseUrl = null
-            cachedAuthParams = null
-        }
-    }
+    fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? =
+        buildUrl("rest/getCoverArt", mapOf("id" to coverArtId, "size" to size.toString()))
 
     private fun buildUrl(path: String, params: Map<String, String>): String? {
-        val authParams = getOrBuildAuthParams() ?: return null
-        val baseUrl = cachedBaseUrl ?: return null
+        val creds = credentialsProvider() ?: return null
+        val (baseUrl, authParams) = authFor(creds)
         val enc = { s: String -> URLEncoder.encode(s, "UTF-8") }
-        val extraParams = params.entries.joinToString("&") { "${enc(it.key)}=${enc(it.value)}" }
-        return "$baseUrl/$path?$authParams&$extraParams"
+        val extra = params.entries.joinToString("&") { "${enc(it.key)}=${enc(it.value)}" }
+        return "$baseUrl/$path?$authParams&$extra"
     }
 
-    private fun getOrBuildAuthParams(): String? {
-        cachedAuthParams?.let { return it }
+    private fun authFor(creds: ServerCredentials): Pair<String, String> {
         synchronized(this) {
-            cachedAuthParams?.let { return it }
-            val creds = credentialsProvider() ?: return null
+            if (creds == cachedCreds && cachedBaseUrl != null && cachedAuthParams != null) {
+                return cachedBaseUrl!! to cachedAuthParams!!
+            }
             val token = md5("${creds.password}$sessionSalt")
             val enc = { s: String -> URLEncoder.encode(s, "UTF-8") }
+            val baseUrl = creds.serverUrl.trimEnd('/')
+            val authParams = "u=${enc(creds.username)}&t=$token&s=$sessionSalt&v=1.16.1&c=Resonance&f=json"
             cachedCreds = creds
-            cachedToken = token
-            cachedBaseUrl = creds.serverUrl.trimEnd('/')
-            cachedAuthParams = "u=${enc(creds.username)}&t=$token&s=$sessionSalt&v=1.16.1&c=Resonance&f=json"
-            return cachedAuthParams
+            cachedBaseUrl = baseUrl
+            cachedAuthParams = authParams
+            return baseUrl to authParams
         }
     }
 
