@@ -2,7 +2,6 @@ package com.resonance.music.playback
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -12,12 +11,10 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.SongItem
-import com.resonance.music.data.download.DownloadManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,8 +30,7 @@ enum class RepeatMode { OFF, ALL, ONE }
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val apiHelper: SubsonicApiHelper,
-    private val downloadManager: DownloadManager
+    private val apiHelper: SubsonicApiHelper
 ) {
     private var player: ExoPlayer? = null
     private var serviceStarted = false
@@ -112,12 +108,7 @@ class PlaybackManager @Inject constructor(
             runOnMainThread {
                 try {
                     val mediaItems = currentQueue.mapNotNull { song ->
-                        val cachedPath = downloadManager.getCachedFilePath(song.id)
-                        val uri = if (cachedPath != null && File(cachedPath).exists()) {
-                            Uri.fromFile(File(cachedPath)).toString()
-                        } else {
-                            apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
-                        }
+                        val uri = apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
                         MediaItem.Builder()
                             .setUri(uri)
                             .setMediaId(song.id)
@@ -183,12 +174,7 @@ class PlaybackManager @Inject constructor(
             currentQueueIndex = startIndex
 
             val mediaItems = songs.mapNotNull { song ->
-                val cachedPath = downloadManager.getCachedFilePath(song.id)
-                val uri = if (cachedPath != null && File(cachedPath).exists()) {
-                    Uri.fromFile(File(cachedPath)).toString()
-                } else {
-                    apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
-                }
+                val uri = apiHelper.getStreamUrl(song.id) ?: return@mapNotNull null
 
                 MediaItem.Builder()
                     .setUri(uri)

@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.resonance.music.BuildConfig
 import com.resonance.music.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,13 +34,12 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
-    var showClearCacheDialog by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Log out") },
-            text = { Text("This will disconnect from the server and clear your credentials. Downloaded songs will be kept.") },
+            text = { Text("This will disconnect from the server and clear your credentials.") },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
@@ -49,23 +49,6 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    if (showClearCacheDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearCacheDialog = false },
-            title = { Text("Clear cache") },
-            text = { Text("Delete all cached songs and album data? This won't affect your server data.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearCacheDialog = false
-                    viewModel.clearCache()
-                }) { Text("Clear") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearCacheDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -162,29 +145,6 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // ── Storage ──
-            Text(
-                "Storage",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            ListItem(
-                headlineContent = { Text("Offline songs") },
-                supportingContent = { Text("${uiState.offlineSongCount} songs cached") },
-                leadingContent = { Icon(Icons.Default.DownloadDone, contentDescription = null) }
-            )
-
-            ListItem(
-                headlineContent = { Text("Clear cache") },
-                supportingContent = { Text("Remove all cached data") },
-                leadingContent = { Icon(Icons.Default.DeleteSweep, contentDescription = null) },
-                modifier = Modifier.clickable { showClearCacheDialog = true }
-            )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
             // ── Account ──
             Text(
                 "Account",
@@ -215,7 +175,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Resonance v0.3.0",
+                    "Resonance v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

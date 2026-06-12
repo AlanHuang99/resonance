@@ -2,16 +2,11 @@ package com.resonance.music.di
 
 import android.content.pm.ApplicationInfo
 import android.content.Context
-import androidx.room.Room
 import com.resonance.music.data.api.DynamicBaseUrlInterceptor
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.ServerCredentials
 import com.resonance.music.data.api.SubsonicAuthInterceptor
-import com.resonance.music.data.db.ResonanceDatabase
-import com.resonance.music.data.db.dao.AlbumDao
-import com.resonance.music.data.db.dao.ArtistDao
-import com.resonance.music.data.db.dao.SongDao
 import com.resonance.music.data.repository.AuthRepository
 import dagger.Module
 import dagger.Provides
@@ -91,23 +86,4 @@ object AppModule {
             cached ?: runBlocking { authRepository.getCredentials() }.also { cached = it }
         }
     }
-
-    @Provides
-    @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): ResonanceDatabase {
-        return Room.databaseBuilder(
-            context,
-            ResonanceDatabase::class.java,
-            "resonance_db"
-        ).build()
-    }
-
-    @Provides
-    fun provideSongDao(db: ResonanceDatabase): SongDao = db.songDao()
-
-    @Provides
-    fun provideAlbumDao(db: ResonanceDatabase): AlbumDao = db.albumDao()
-
-    @Provides
-    fun provideArtistDao(db: ResonanceDatabase): ArtistDao = db.artistDao()
 }

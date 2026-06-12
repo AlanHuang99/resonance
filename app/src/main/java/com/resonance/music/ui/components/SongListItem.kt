@@ -19,8 +19,7 @@ fun SongListItem(
     onClick: () -> Unit,
     onPlayNext: (() -> Unit)? = null,
     onGoToAlbum: (() -> Unit)? = null,
-    onGoToArtist: (() -> Unit)? = null,
-    onDownload: (() -> Unit)? = null
+    onGoToArtist: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -87,16 +86,6 @@ fun SongListItem(
                                 onGoToArtist()
                             },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
-                        )
-                    }
-                    if (onDownload != null) {
-                        DropdownMenuItem(
-                            text = { Text("Download") },
-                            onClick = {
-                                showMenu = false
-                                onDownload()
-                            },
-                            leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
                         )
                     }
                 }

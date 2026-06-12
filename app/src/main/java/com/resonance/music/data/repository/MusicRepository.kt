@@ -3,23 +3,13 @@ package com.resonance.music.data.repository
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.*
-import com.resonance.music.data.db.dao.AlbumDao
-import com.resonance.music.data.db.dao.ArtistDao
-import com.resonance.music.data.db.dao.SongDao
-import com.resonance.music.data.db.entities.CachedAlbum
-import com.resonance.music.data.db.entities.CachedArtist
-import com.resonance.music.data.db.entities.CachedSong
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MusicRepository @Inject constructor(
     private val api: SubsonicApi,
-    private val apiHelper: SubsonicApiHelper,
-    private val songDao: SongDao,
-    private val albumDao: AlbumDao,
-    private val artistDao: ArtistDao
+    private val apiHelper: SubsonicApiHelper
 ) {
     // --- Artists ---
 
@@ -166,54 +156,8 @@ class MusicRepository @Inject constructor(
 
     fun getStreamUrl(songId: String): String? = apiHelper.getStreamUrl(songId)
     fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? = apiHelper.getCoverArtUrl(coverArtId, size)
-
-    // --- Local cache ---
-
-    fun getOfflineSongs(): Flow<List<CachedSong>> = songDao.getOfflineSongs()
-    fun getStarredSongsLocal(): Flow<List<CachedSong>> = songDao.getStarredSongs()
-    fun getAllAlbumsLocal(): Flow<List<CachedAlbum>> = albumDao.getAllAlbums()
-    fun getAllArtistsLocal(): Flow<List<CachedArtist>> = artistDao.getAllArtists()
-
-    suspend fun cacheArtists(artists: List<ArtistItem>) {
-        artistDao.upsertArtists(artists.map { it.toCached() })
-    }
-
-    suspend fun cacheAlbums(albums: List<AlbumItem>) {
-        albumDao.upsertAlbums(albums.map { it.toCached() })
-    }
-
-    suspend fun cacheSongs(songs: List<SongItem>) {
-        songDao.upsertSongs(songs.map { it.toCached() })
-    }
-
-    suspend fun updateSongCachedPath(songId: String, path: String?) {
-        songDao.updateCachedPath(songId, path)
-    }
-
-    suspend fun getCachedSong(songId: String): CachedSong? = songDao.getSongById(songId)
 }
 
 class SubsonicException(error: SubsonicError?) : Exception(
     error?.message ?: "Unknown Subsonic error (code: ${error?.code})"
-)
-
-// --- Mapping extensions ---
-
-private fun ArtistItem.toCached() = CachedArtist(
-    id = id, name = name, coverArt = coverArt,
-    albumCount = albumCount, starred = starred != null
-)
-
-private fun AlbumItem.toCached() = CachedAlbum(
-    id = id, name = name, artist = artist, artistId = artistId,
-    coverArt = coverArt, songCount = songCount, duration = duration,
-    year = year, genre = genre, starred = starred != null
-)
-
-private fun SongItem.toCached() = CachedSong(
-    id = id, title = title, album = album, albumId = albumId,
-    artist = artist, artistId = artistId, track = track, year = year,
-    genre = genre, coverArt = coverArt, duration = duration,
-    bitRate = bitRate, suffix = suffix, discNumber = discNumber,
-    starred = starred != null
 )

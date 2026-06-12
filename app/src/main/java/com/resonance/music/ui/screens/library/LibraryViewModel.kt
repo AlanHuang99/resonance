@@ -44,7 +44,6 @@ class LibraryViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val artists = musicRepository.getArtists()
-                musicRepository.cacheArtists(artists)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     artists = artists,
@@ -78,7 +77,6 @@ class LibraryViewModel @Inject constructor(
                         coverArtUrlBuilder = { musicRepository.getCoverArtUrl(it) }
                     )
                 }
-                musicRepository.cacheAlbums(allAlbums)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     albums = allAlbums,
