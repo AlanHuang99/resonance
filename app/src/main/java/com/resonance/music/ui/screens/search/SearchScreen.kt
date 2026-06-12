@@ -88,7 +88,7 @@ fun SearchScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 12.dp)
             ) {
                 // Artists
                 if (uiState.artists.isNotEmpty()) {

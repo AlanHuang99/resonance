@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -64,9 +65,10 @@ fun ResonanceNavHost(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.LIBRARY)
-    val showMiniPlayer = nowPlaying.song != null &&
-            currentRoute !in listOf(Routes.PLAYER, Routes.LYRICS, Routes.LOGIN, Routes.QUEUE, null)
+    val onFullScreen = currentRoute == null ||
+            currentRoute in listOf(Routes.PLAYER, Routes.LYRICS, Routes.QUEUE, Routes.LOGIN)
+    val showBottomBar = !onFullScreen
+    val showMiniPlayer = !onFullScreen && nowPlaying.song != null
 
     val loggedIn = isLoggedIn
     if (loggedIn == null) {
@@ -78,7 +80,21 @@ fun ResonanceNavHost(
 
     val startDestination = if (loggedIn) Routes.HOME else Routes.LOGIN
 
+    // Standard bottom-nav tab switch: one back-stack entry per tab, with state saved/restored.
+    val onTabSelected: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
+        // The root consumes no insets itself; the bottom bar owns the nav-bar inset and
+        // each screen's top bar owns the status-bar inset. consumeWindowInsets on the
+        // NavHost stops the per-screen Scaffolds from re-adding them (the doubled padding
+        // that left empty bands top and bottom).
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Column {
                 if (showMiniPlayer) {
@@ -99,24 +115,28 @@ fun ResonanceNavHost(
                 if (showBottomBar) {
                     NavigationBar {
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
                             label = { Text("Home") },
                             selected = currentRoute == Routes.HOME,
-                            onClick = {
-                                navController.navigate(Routes.HOME) {
-                                    popUpTo(Routes.HOME) { inclusive = true }
-                                }
-                            }
+                            onClick = { onTabSelected(Routes.HOME) }
                         )
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = "Library") },
+                            icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            label = { Text("Search") },
+                            selected = currentRoute == Routes.SEARCH,
+                            onClick = { onTabSelected(Routes.SEARCH) }
+                        )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
                             label = { Text("Library") },
                             selected = currentRoute == Routes.LIBRARY,
-                            onClick = {
-                                navController.navigate(Routes.LIBRARY) {
-                                    popUpTo(Routes.HOME)
-                                }
-                            }
+                            onClick = { onTabSelected(Routes.LIBRARY) }
+                        )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                            label = { Text("Settings") },
+                            selected = currentRoute == Routes.SETTINGS,
+                            onClick = { onTabSelected(Routes.SETTINGS) }
                         )
                     }
                 }
@@ -126,7 +146,9 @@ fun ResonanceNavHost(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier
+                .padding(padding)
+                .consumeWindowInsets(padding)
         ) {
             composable(Routes.LOGIN) {
                 LoginScreen(

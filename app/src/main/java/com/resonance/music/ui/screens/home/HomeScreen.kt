@@ -75,7 +75,7 @@ fun HomeScreen(
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = 90.dp) // room for the mini player
+                contentPadding = PaddingValues(bottom = 12.dp)
             ) {
                 item(key = "greeting") {
                     Text(

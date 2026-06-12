@@ -87,7 +87,7 @@ private fun ArtistsTab(uiState: LibraryUiState, onArtistClick: (String) -> Unit)
     if (uiState.artists.isEmpty()) {
         EmptyState(Icons.Default.Person, "Artists", "No artists found")
     } else {
-        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
             items(uiState.artists, key = { it.id }, contentType = { "artist" }) { artist ->
                 ListItem(
                     headlineContent = {
@@ -142,7 +142,7 @@ private fun AlbumsTab(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(150.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -164,7 +164,7 @@ private fun GenresTab(uiState: LibraryUiState, onGenreClick: (String) -> Unit) {
     if (uiState.genres.isEmpty()) {
         EmptyState(Icons.Default.Category, "Genres", "No genres found")
     } else {
-        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
             items(uiState.genres, key = { it.name }, contentType = { "genre" }) { genre ->
                 ListItem(
                     headlineContent = { Text(genre.name) },
@@ -182,7 +182,7 @@ private fun PlaylistsTab(uiState: LibraryUiState, onPlaylistClick: (String) -> U
     if (uiState.playlists.isEmpty()) {
         EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "Playlists", "No playlists found")
     } else {
-        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
             items(uiState.playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
                 ListItem(
                     headlineContent = {
@@ -219,7 +219,7 @@ private fun FavoritesTab(
     if (!hasContent) {
         EmptyState(Icons.Default.Favorite, "Favorites", "No favorites yet")
     } else {
-        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
             if (uiState.starredArtists.isNotEmpty()) {
                 item {
                     Text(

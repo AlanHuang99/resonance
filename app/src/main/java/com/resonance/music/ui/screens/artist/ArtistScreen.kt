@@ -72,7 +72,7 @@ fun ArtistScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 12.dp)
             ) {
                 // Artist header
                 item {

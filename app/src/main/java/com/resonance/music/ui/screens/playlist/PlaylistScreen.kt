@@ -71,7 +71,7 @@ fun PlaylistScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 12.dp)
             ) {
                 // Playlist header
                 item {
