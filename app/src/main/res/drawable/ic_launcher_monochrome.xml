@@ -4,25 +4,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Resonance ripple: concentric rings spreading outward, cyan core fading to a magenta edge -->
+    <!-- Monochrome ripple for Android 13+ themed icons; the system tints by alpha -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FF00E5"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="3.5"
         android:strokeAlpha="0.6"
         android:pathData="M54,54 m -31,0 a 31,31 0 1,0 62,0 a 31,31 0 1,0 -62,0" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#8E64E8"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="4"
         android:strokeAlpha="0.85"
         android:pathData="M54,54 m -21,0 a 21,21 0 1,0 42,0 a 21,21 0 1,0 -42,0" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#00F0FF"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="4.5"
         android:pathData="M54,54 m -12,0 a 12,12 0 1,0 24,0 a 12,12 0 1,0 -24,0" />
     <path
-        android:fillColor="#00F0FF"
+        android:fillColor="#FFFFFF"
         android:pathData="M54,54 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0" />
 </vector>
