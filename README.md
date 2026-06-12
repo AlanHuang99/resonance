@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/icon.png" width="96" alt="Resonance icon" />
+<img src="docs/icon.png" width="128" alt="Resonance icon" />
 
 # Resonance
 
