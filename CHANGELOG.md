@@ -2,6 +2,20 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.5.0] - 2026-06-12
+
+### Added
+- Favorite (star) toggle on the album and artist screens
+- Artist detail: biography and a similar-artists strip
+- Genres tab with a per-genre album grid
+- Album library is now a grid with sort options (A–Z, recently added, recently played, most played, random)
+- Multi-disc albums are grouped under "Disc N" headers
+- Tap a synced lyric line to seek to it
+
+### Changed
+- Stored credentials are excluded from cloud backup and device transfer
+- F-Droid: omit AGP's DependencyInfoBlock from the APK
+
 ## [0.4.0] - 2026-06-12
 
 ### Added

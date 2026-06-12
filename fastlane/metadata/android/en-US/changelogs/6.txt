@@ -1,0 +1,7 @@
+New in 0.5.0:
+- Star albums and artists, not just songs
+- Artist pages show a biography and similar artists
+- Browse by genre; the album library is a grid with sort options
+- Multi-disc albums are grouped by disc
+- Tap a synced lyric line to seek
+- Stored credentials are no longer included in device backups
