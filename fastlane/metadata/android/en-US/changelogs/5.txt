@@ -1,0 +1,8 @@
+New in 0.4.0:
+- Redesigned home screen and login, with a new app icon and typography
+- Rebuilt playback on the Media3 session API for a smoother, lighter interface
+- Faster image loading and list scrolling
+- Scrobbling now reports plays to your server
+- Re-login or changing server no longer needs an app restart
+- Album art now appears in search results
+- Removed the unused offline-download code

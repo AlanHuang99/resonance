@@ -2,6 +2,28 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.4.0] - 2026-06-12
+
+### Added
+- Redesigned home screen with a "jump back in" hero and a shuffle-all action
+- New typography using the bundled Space Grotesk and Inter fonts
+- New ripple launcher icon with a themed (monochrome) variant
+- Redesigned login screen
+
+### Changed
+- Rebuilt the UI/playback link on a Media3 `MediaController`; playback position is now a separate flow, so the UI no longer recomposes on every position tick
+- Shared, larger image cache and right-sized cover-art requests for faster scrolling
+- Release builds now build from source without signing secrets (F-Droid friendly)
+
+### Fixed
+- Re-login or server change now takes effect without restarting the app
+- Scrobbling now reports plays to the server
+- Album art now loads in search results
+- Favorite toggle reverts if the server request fails
+
+### Removed
+- Local song downloads and the unused on-device cache layer
+
 ## [0.3.1] - 2026-04-05
 
 ### Changed
