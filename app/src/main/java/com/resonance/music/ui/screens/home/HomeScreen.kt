@@ -10,8 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
@@ -36,8 +34,6 @@ import com.resonance.music.ui.components.AlbumCard
 @Composable
 fun HomeScreen(
     onAlbumClick: (String) -> Unit,
-    onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     onSeeAllClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -59,17 +55,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Resonance") },
-                actions = {
-                    IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
+            TopAppBar(title = { Text("Resonance") })
         }
     ) { padding ->
         when {

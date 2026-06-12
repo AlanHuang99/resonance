@@ -165,11 +165,7 @@ fun ResonanceNavHost(
             composable(Routes.HOME) {
                 HomeScreen(
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
-                    onSearchClick = { navController.navigate(Routes.SEARCH) },
-                    onSettingsClick = { navController.navigate(Routes.SETTINGS) },
-                    onSeeAllClick = {
-                        navController.navigate(Routes.LIBRARY) { popUpTo(Routes.HOME) }
-                    }
+                    onSeeAllClick = { onTabSelected(Routes.LIBRARY) }
                 )
             }
 
@@ -184,7 +180,6 @@ fun ResonanceNavHost(
 
             composable(Routes.SEARCH) {
                 SearchScreen(
-                    onBackClick = { navController.popBackStack() },
                     onArtistClick = { navController.navigate(Routes.artist(it)) },
                     onAlbumClick = { navController.navigate(Routes.album(it)) }
                 )
@@ -218,7 +213,6 @@ fun ResonanceNavHost(
 
             composable(Routes.SETTINGS) {
                 SettingsScreen(
-                    onBackClick = { navController.popBackStack() },
                     onLogout = {
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }
