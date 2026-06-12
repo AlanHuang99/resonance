@@ -1,6 +1,8 @@
 package com.resonance.music.ui.screens.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +50,15 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // Swipe down to minimize back to the mini player
+                .pointerInput(Unit) {
+                    var totalDrag = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { totalDrag = 0f },
+                        onVerticalDrag = { _, dy -> totalDrag += dy },
+                        onDragEnd = { if (totalDrag > 250f) onBackClick() }
+                    )
+                }
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
@@ -57,7 +69,19 @@ fun PlayerScreen(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    // Swipe the art left/right to change tracks
+                    .pointerInput(Unit) {
+                        var totalDrag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { totalDrag = 0f },
+                            onHorizontalDrag = { _, dx -> totalDrag += dx },
+                            onDragEnd = {
+                                if (totalDrag < -120f) viewModel.next()
+                                else if (totalDrag > 120f) viewModel.previous()
+                            }
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 if (uiState.coverArtUrl != null) {

@@ -2,6 +2,7 @@ package com.resonance.music.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,7 +36,16 @@ fun MiniPlayer(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPlayerClick),
+            .clickable(onClick = onPlayerClick)
+            // Swipe up to expand to the full player
+            .pointerInput(Unit) {
+                var totalDrag = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { totalDrag = 0f },
+                    onVerticalDrag = { _, dy -> totalDrag += dy },
+                    onDragEnd = { if (totalDrag < -60f) onPlayerClick() }
+                )
+            },
         tonalElevation = 3.dp,
         shadowElevation = 4.dp
     ) {

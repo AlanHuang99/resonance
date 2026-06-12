@@ -1,6 +1,8 @@
 package com.resonance.music.ui.navigation
 
 import android.net.Uri
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -188,7 +190,11 @@ fun ResonanceNavHost(
                 )
             }
 
-            composable(Routes.PLAYER) {
+            composable(
+                Routes.PLAYER,
+                enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+            ) {
                 PlayerScreen(
                     onBackClick = { navController.popBackStack() },
                     onLyricsClick = { navController.navigate(Routes.LYRICS) },
