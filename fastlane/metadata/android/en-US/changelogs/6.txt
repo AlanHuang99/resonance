@@ -1,7 +1,10 @@
 New in 0.5.0:
+- Search and Settings are now tabs in the bottom bar
+- The full player slides up; swipe down to minimize
+- Swipe the mini-player up to expand; swipe the art to change tracks
+- Pull down to refresh the home feed and library
 - Star albums and artists, not just songs
 - Artist pages show a biography and similar artists
-- Browse by genre; the album library is a grid with sort options
+- Browse by genre; albums shown as a sortable grid
 - Multi-disc albums are grouped by disc
 - Tap a synced lyric line to seek
-- Stored credentials are no longer included in device backups

@@ -11,8 +11,13 @@ All notable changes to Resonance will be documented in this file.
 - Album library is now a grid with sort options (A–Z, recently added, recently played, most played, random)
 - Multi-disc albums are grouped under "Disc N" headers
 - Tap a synced lyric line to seek to it
+- Pull down to refresh the home feed and the current library tab
+- Player gestures: swipe the mini-player up to expand, swipe the full player down to minimize, swipe the album art left/right to change tracks
 
 ### Changed
+- Search and Settings are now bottom-navigation tabs alongside Home and Library
+- The full player opens as a slide-up screen over the bottom bar
+- Removed the empty bands at the top and bottom of screens under edge-to-edge layout
 - Stored credentials are excluded from cloud backup and device transfer
 - F-Droid: omit AGP's DependencyInfoBlock from the APK
 
