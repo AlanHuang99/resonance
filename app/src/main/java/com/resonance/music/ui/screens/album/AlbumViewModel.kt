@@ -21,6 +21,7 @@ data class AlbumUiState(
     val genre: String? = null,
     val coverArtUrl: String? = null,
     val songs: List<SongItem> = emptyList(),
+    val isFavorite: Boolean = false,
     val error: String? = null
 )
 
@@ -33,7 +34,10 @@ class AlbumViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AlbumUiState())
     val uiState: StateFlow<AlbumUiState> = _uiState.asStateFlow()
 
+    private var albumId: String? = null
+
     fun loadAlbum(albumId: String) {
+        this.albumId = albumId
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -46,8 +50,9 @@ class AlbumViewModel @Inject constructor(
                         artistId = album.artistId,
                         year = album.year,
                         genre = album.genre,
-                        coverArtUrl = album.coverArt?.let { musicRepository.getCoverArtUrl(it) },
-                        songs = album.song ?: emptyList()
+                        coverArtUrl = album.coverArt?.let { musicRepository.getCoverArtUrl(it, 512) },
+                        songs = album.song ?: emptyList(),
+                        isFavorite = album.starred != null
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = "Album not found")
@@ -55,6 +60,18 @@ class AlbumViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
+        }
+    }
+
+    fun toggleFavorite() {
+        val id = albumId ?: return
+        val was = _uiState.value.isFavorite
+        _uiState.value = _uiState.value.copy(isFavorite = !was)
+        viewModelScope.launch {
+            val result = runCatching {
+                if (was) musicRepository.unstarAlbum(id) else musicRepository.starAlbum(id)
+            }
+            if (result.isFailure) _uiState.value = _uiState.value.copy(isFavorite = was)
         }
     }
 

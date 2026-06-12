@@ -18,6 +18,7 @@ data class ArtistUiState(
     val albumCount: Int = 0,
     val albums: List<AlbumItem> = emptyList(),
     val coverArtUrlBuilder: ((String) -> String?)? = null,
+    val isFavorite: Boolean = false,
     val error: String? = null
 )
 
@@ -32,7 +33,10 @@ class ArtistViewModel @Inject constructor(
     // One stable instance so UiState copies compare equal. 128px suits 48dp rows.
     private val coverArtBuilder: (String) -> String? = { musicRepository.getCoverArtUrl(it, 128) }
 
+    private var artistId: String? = null
+
     fun loadArtist(artistId: String) {
+        this.artistId = artistId
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -41,10 +45,11 @@ class ArtistViewModel @Inject constructor(
                 if (artist != null) {
                     _uiState.value = ArtistUiState(
                         artistName = artist.name,
-                        imageUrl = artist.coverArt?.let { musicRepository.getCoverArtUrl(it) },
+                        imageUrl = artist.coverArt?.let { musicRepository.getCoverArtUrl(it, 320) },
                         albumCount = artist.albumCount ?: artist.album?.size ?: 0,
                         albums = artist.album ?: emptyList(),
-                        coverArtUrlBuilder = coverArtBuilder
+                        coverArtUrlBuilder = coverArtBuilder,
+                        isFavorite = artist.starred != null
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = "Artist not found")
@@ -52,6 +57,18 @@ class ArtistViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
+        }
+    }
+
+    fun toggleFavorite() {
+        val id = artistId ?: return
+        val was = _uiState.value.isFavorite
+        _uiState.value = _uiState.value.copy(isFavorite = !was)
+        viewModelScope.launch {
+            val result = runCatching {
+                if (was) musicRepository.unstarArtist(id) else musicRepository.starArtist(id)
+            }
+            if (result.isFailure) _uiState.value = _uiState.value.copy(isFavorite = was)
         }
     }
 }

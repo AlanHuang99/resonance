@@ -43,6 +43,15 @@ fun AlbumScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    IconButton(onClick = viewModel::toggleFavorite) {
+                        Icon(
+                            imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (uiState.isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        )
+                    }
                 }
             )
         }

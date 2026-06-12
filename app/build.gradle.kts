@@ -77,6 +77,13 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // F-Droid reproducibility: omit AGP's encrypted dependency-metadata block
+    // (DependencyInfoBlock) from the signed APK.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
 }
 
 dependencies {
