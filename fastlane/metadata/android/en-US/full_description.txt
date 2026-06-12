@@ -1,0 +1,19 @@
+Resonance is a music player for self-hosted, Subsonic-compatible servers such as Navidrome. Connect to your server and stream your own library.
+
+<b>Features</b>
+<ul>
+<li>Stream music from any Subsonic or Navidrome server</li>
+<li>Browse artists, albums, and playlists</li>
+<li>A home screen of recently played, newest, most played, and random albums</li>
+<li>Play, pause, skip, seek, shuffle, repeat, and a play queue</li>
+<li>Background playback with a notification and lock-screen controls</li>
+<li>Search artists, albums, and songs</li>
+<li>Star songs and browse your favorites</li>
+<li>Synced and plain-text lyrics with auto-scroll</li>
+<li>Scrobble played tracks back to your server</li>
+<li>Several color themes</li>
+</ul>
+
+Built with Jetpack Compose and Material Design 3.
+
+Resonance is free software licensed under the GNU GPLv3, with no proprietary dependencies, no tracking, and no advertising.
