@@ -138,7 +138,10 @@ fun ResonanceNavHost(
                 HomeScreen(
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
                     onSearchClick = { navController.navigate(Routes.SEARCH) },
-                    onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                    onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                    onSeeAllClick = {
+                        navController.navigate(Routes.LIBRARY) { popUpTo(Routes.HOME) }
+                    }
                 )
             }
 

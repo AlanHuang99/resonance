@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.api.models.AlbumItem
 import com.resonance.music.data.repository.MusicRepository
+import com.resonance.music.playback.PlaybackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +20,18 @@ data class HomeUiState(
     val frequentAlbums: List<AlbumItem> = emptyList(),
     val randomAlbums: List<AlbumItem> = emptyList(),
     val error: String? = null
-)
+) {
+    // First album with art — used for the "jump back in" hero.
+    val featured: AlbumItem?
+        get() = (recentAlbums + newestAlbums).firstOrNull { it.coverArt != null }
+            ?: recentAlbums.firstOrNull()
+            ?: newestAlbums.firstOrNull()
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val playbackManager: PlaybackManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -57,7 +65,22 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun getCoverArtUrl(coverArtId: String): String? {
-        return musicRepository.getCoverArtUrl(coverArtId)
+    /** Play a batch of random songs from the whole library. */
+    fun shuffleAll() {
+        viewModelScope.launch {
+            val songs = runCatching { musicRepository.getRandomSongs(50) }.getOrDefault(emptyList())
+            if (songs.isNotEmpty()) playbackManager.playSongs(songs)
+        }
     }
+
+    /** Fetch an album's tracks and start playing it. */
+    fun playAlbum(albumId: String) {
+        viewModelScope.launch {
+            val songs = runCatching { musicRepository.getAlbumDetail(albumId)?.song }.getOrNull().orEmpty()
+            if (songs.isNotEmpty()) playbackManager.playSongs(songs)
+        }
+    }
+
+    fun getCoverArtUrl(coverArtId: String, size: Int = 320): String? =
+        musicRepository.getCoverArtUrl(coverArtId, size)
 }
