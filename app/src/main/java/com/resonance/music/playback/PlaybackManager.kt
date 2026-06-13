@@ -182,13 +182,20 @@ class PlaybackManager @Inject constructor(
     }
 
     private fun startPlayback(c: MediaController, songs: List<SongItem>, startIndex: Int) {
-        _queue.value = songs
-        val items = songs.mapNotNull { buildMediaItem(it) }
+        val (items, kept) = buildItemsAndSongs(songs)
         if (items.isEmpty()) return
+        _queue.value = kept
         c.setMediaItems(items, startIndex.coerceIn(0, items.size - 1), 0L)
         c.prepare()
         c.play()
         syncNowPlaying()
+    }
+
+    /** Build media items and the matching song list together so [_queue] never
+     *  drifts from the controller timeline when a stream URL is missing. */
+    private fun buildItemsAndSongs(songs: List<SongItem>): Pair<List<MediaItem>, List<SongItem>> {
+        val pairs = songs.mapNotNull { song -> buildMediaItem(song)?.let { it to song } }
+        return pairs.map { it.first } to pairs.map { it.second }
     }
 
     /** Seek to a queue position without rebuilding the queue (fast in-place jump). */
@@ -198,6 +205,55 @@ class PlaybackManager @Inject constructor(
             c.seekTo(index, 0L)
             c.play()
         }
+    }
+
+    /** Insert songs immediately after the current track. Starts a new queue if nothing is playing. */
+    fun playNext(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val c = controller
+        if (c == null || c.mediaItemCount == 0) { playSongs(songs); return }
+        val (items, kept) = buildItemsAndSongs(songs)
+        if (items.isEmpty()) return
+        val insertIndex = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
+        c.addMediaItems(insertIndex, items)
+        _queue.update { QueueEdits.insertAt(it, insertIndex, kept) }
+    }
+
+    /** Append songs to the end of the queue. Starts a new queue if nothing is playing. */
+    fun addToQueue(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val c = controller
+        if (c == null || c.mediaItemCount == 0) { playSongs(songs); return }
+        val (items, kept) = buildItemsAndSongs(songs)
+        if (items.isEmpty()) return
+        c.addMediaItems(c.mediaItemCount, items)
+        _queue.update { it + kept }
+    }
+
+    /** Remove the queue entry at [index]. If it is the current track, Media3 advances to the next. */
+    fun removeFromQueue(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.removeMediaItem(index)
+        _queue.update { QueueEdits.removeAt(it, index) }
+        syncNowPlaying()
+    }
+
+    /** Move a queue entry from one position to another (drag-to-reorder). */
+    fun moveQueueItem(from: Int, to: Int) {
+        val c = controller ?: return
+        if (from !in 0 until c.mediaItemCount || to !in 0 until c.mediaItemCount || from == to) return
+        c.moveMediaItem(from, to)
+        _queue.update { QueueEdits.move(it, from, to) }
+        syncNowPlaying()
+    }
+
+    /** Clear everything and stop playback. */
+    fun clearQueue() {
+        val c = controller ?: return
+        c.clearMediaItems()
+        _queue.value = emptyList()
+        syncNowPlaying()
     }
 
     fun togglePlayPause() {
