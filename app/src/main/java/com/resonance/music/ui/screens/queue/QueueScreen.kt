@@ -105,10 +105,15 @@ fun QueueScreen(
                 itemsIndexed(keyed, key = { _, pair -> pair.first }) { index, pair ->
                     val song = pair.second
                     ReorderableItem(reorderState, key = pair.first) { _ ->
+                        // rememberSwipeToDismissBoxState captures confirmValueChange once, so
+                        // read the row's CURRENT index through rememberUpdatedState — otherwise
+                        // a reorder/removal leaves the closure pointing at a stale index and the
+                        // swipe deletes the wrong row.
+                        val currentIndex by rememberUpdatedState(index)
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value != SwipeToDismissBoxValue.Settled) {
-                                    playbackManager.removeFromQueue(index)
+                                    playbackManager.removeFromQueue(currentIndex)
                                     true
                                 } else false
                             }
