@@ -1,0 +1,5 @@
+In 0.6.0:
+- Play next and add to queue from any song's menu, or for a whole album or playlist
+- Editable queue: drag to reorder, swipe to remove, and clear
+- Tap an artist or album name (on an album or the player) to open it
+- Artist pages now have a Tracks tab plus play, shuffle, and loop

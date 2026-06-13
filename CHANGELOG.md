@@ -2,6 +2,17 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.6.0] - 2026-06-13
+
+### Added
+- Play next and add to queue, from a song's menu or for a whole album or playlist
+- Editable play queue: drag to reorder, swipe to remove, and clear
+- Artist pages now have a Tracks tab alongside Albums, plus play, shuffle, and loop
+- Tap an artist or album name on the album screen or the player to navigate to it
+
+### Changed
+- "Play next" now inserts after the current track instead of playing immediately
+
 ## [0.5.2] - 2026-06-12
 
 ### Changed

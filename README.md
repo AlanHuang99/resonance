@@ -26,11 +26,13 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 
 - Stream your library from any Subsonic or Navidrome server
 - Browse by artist, album, and genre, and search across the library
-- Playback controls: play, pause, skip, seek, shuffle, repeat, and a queue
+- Playback controls: play, pause, skip, seek, shuffle, and repeat
+- An editable play queue: play next, add to queue, reorder, and swipe to remove
 - Background playback with media-session and notification controls
 - Mini-player plus a full-screen player with swipe gestures
 - Favorites: star artists, albums, and songs
-- Artist pages with a biography and similar artists
+- Artist pages with albums and tracks, play and shuffle, a biography, and similar artists
+- Tap an artist or album name to jump straight to it
 - Synced and plain-text lyrics with auto-scroll
 - Scrobbling: report played tracks back to the server
 - Several color themes
