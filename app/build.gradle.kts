@@ -128,4 +128,10 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines)
+
+    // Reorderable queue (Compose 1.6-compatible line)
+    implementation(libs.reorderable)
+
+    // Unit tests (JVM) — queue transform logic
+    testImplementation(libs.junit)
 }

@@ -16,6 +16,8 @@ lifecycle = "2.8.4"
 activityCompose = "1.9.1"
 coreKtx = "1.13.1"
 splashscreen = "1.0.1"
+reorderable = "2.3.3"
+junit = "4.13.2"
 
 [libraries]
 # Compose
@@ -58,6 +60,12 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 
 # Coroutines
 kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Reorderable queue (Compose 1.6-compatible line)
+reorderable = { group = "sh.calvin.reorderable", name = "reorderable-android", version.ref = "reorderable" }
+
+# Unit tests (JVM)
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
