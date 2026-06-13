@@ -4,8 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.api.models.AlbumItem
 import com.resonance.music.data.api.models.ArtistItem
+import com.resonance.music.data.api.models.SongItem
 import com.resonance.music.data.repository.MusicRepository
+import com.resonance.music.playback.PlaybackManager
+import com.resonance.music.playback.RepeatMode
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,16 +28,22 @@ data class ArtistUiState(
     val isFavorite: Boolean = false,
     val biography: String? = null,
     val similarArtists: List<ArtistItem> = emptyList(),
+    val tracks: List<SongItem> = emptyList(),
+    val tracksLoading: Boolean = false,
     val error: String? = null
 )
 
 @HiltViewModel
 class ArtistViewModel @Inject constructor(
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val playbackManager: PlaybackManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArtistUiState())
     val uiState: StateFlow<ArtistUiState> = _uiState.asStateFlow()
+
+    /** Mirrors the global repeat mode so the artist header's Loop toggle reflects it. */
+    val repeatMode: StateFlow<RepeatMode> = playbackManager.repeatMode
 
     // One stable instance so UiState copies compare equal. 128px suits 48dp rows.
     private val coverArtBuilder: (String) -> String? = { musicRepository.getCoverArtUrl(it, 128) }
@@ -55,6 +67,7 @@ class ArtistViewModel @Inject constructor(
                         isFavorite = artist.starred != null
                     )
                     loadArtistInfo(artistId)
+                    loadTracks(artist.album ?: emptyList())
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = "Artist not found")
                 }
@@ -85,4 +98,37 @@ class ArtistViewModel @Inject constructor(
             if (result.isFailure) _uiState.value = _uiState.value.copy(isFavorite = was)
         }
     }
+
+    /** Subsonic has no "all songs by artist" endpoint, so gather each album's
+     *  songs in parallel and flatten in album order. */
+    private fun loadTracks(albums: List<AlbumItem>) {
+        if (albums.isEmpty()) return
+        _uiState.value = _uiState.value.copy(tracksLoading = true)
+        viewModelScope.launch {
+            val songs = runCatching {
+                coroutineScope {
+                    albums.map { album -> async { musicRepository.getAlbumDetail(album.id)?.song ?: emptyList() } }
+                        .awaitAll()
+                        .flatten()
+                }
+            }.getOrDefault(emptyList())
+            _uiState.value = _uiState.value.copy(tracks = songs, tracksLoading = false)
+        }
+    }
+
+    fun playAll(shuffle: Boolean) {
+        val tracks = _uiState.value.tracks
+        if (tracks.isEmpty()) return
+        playbackManager.playSongs(if (shuffle) tracks.shuffled() else tracks)
+    }
+
+    fun playTrackAt(index: Int) {
+        val tracks = _uiState.value.tracks
+        if (tracks.isEmpty()) return
+        playbackManager.playSongs(tracks, index)
+    }
+
+    fun playNext(song: SongItem) = playbackManager.playNext(listOf(song))
+    fun addToQueue(song: SongItem) = playbackManager.addToQueue(listOf(song))
+    fun toggleRepeat() = playbackManager.toggleRepeat()
 }
