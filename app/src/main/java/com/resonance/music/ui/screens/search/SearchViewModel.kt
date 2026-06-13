@@ -66,6 +66,9 @@ class SearchViewModel @Inject constructor(
         playbackManager.playSongs(listOf(song))
     }
 
+    fun playNext(song: SongItem) = playbackManager.playNext(listOf(song))
+    fun addToQueue(song: SongItem) = playbackManager.addToQueue(listOf(song))
+
     fun getCoverArtUrl(coverArtId: String, size: Int = 128): String? =
         musicRepository.getCoverArtUrl(coverArtId, size)
 }

@@ -17,9 +17,7 @@ fun SongListItem(
     song: SongItem,
     trackNumber: Int? = null,
     onClick: () -> Unit,
-    onPlayNext: (() -> Unit)? = null,
-    onGoToAlbum: (() -> Unit)? = null,
-    onGoToArtist: (() -> Unit)? = null
+    actions: SongActions = SongActions()
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -60,31 +58,31 @@ fun SongListItem(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Play next") },
-                        onClick = {
-                            showMenu = false
-                            onPlayNext?.invoke() ?: onClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.QueuePlayNext, contentDescription = null) }
-                    )
-                    if (onGoToAlbum != null) {
+                    actions.onPlayNext?.let { action ->
+                        DropdownMenuItem(
+                            text = { Text("Play next") },
+                            onClick = { showMenu = false; action() },
+                            leadingIcon = { Icon(Icons.Default.QueuePlayNext, contentDescription = null) }
+                        )
+                    }
+                    actions.onAddToQueue?.let { action ->
+                        DropdownMenuItem(
+                            text = { Text("Add to queue") },
+                            onClick = { showMenu = false; action() },
+                            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                        )
+                    }
+                    actions.onGoToAlbum?.let { action ->
                         DropdownMenuItem(
                             text = { Text("Go to album") },
-                            onClick = {
-                                showMenu = false
-                                onGoToAlbum()
-                            },
+                            onClick = { showMenu = false; action() },
                             leadingIcon = { Icon(Icons.Default.Album, contentDescription = null) }
                         )
                     }
-                    if (onGoToArtist != null) {
+                    actions.onGoToArtist?.let { action ->
                         DropdownMenuItem(
                             text = { Text("Go to artist") },
-                            onClick = {
-                                showMenu = false
-                                onGoToArtist()
-                            },
+                            onClick = { showMenu = false; action() },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                         )
                     }

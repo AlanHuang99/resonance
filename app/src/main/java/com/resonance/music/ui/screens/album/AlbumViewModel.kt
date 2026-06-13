@@ -88,4 +88,9 @@ class AlbumViewModel @Inject constructor(
         if (songs.isEmpty()) return
         playbackManager.playSongs(songs, index)
     }
+
+    fun playNext(song: SongItem) = playbackManager.playNext(listOf(song))
+    fun addToQueue(song: SongItem) = playbackManager.addToQueue(listOf(song))
+    fun playAllNext() = _uiState.value.songs.takeIf { it.isNotEmpty() }?.let { playbackManager.playNext(it) }
+    fun addAllToQueue() = _uiState.value.songs.takeIf { it.isNotEmpty() }?.let { playbackManager.addToQueue(it) }
 }

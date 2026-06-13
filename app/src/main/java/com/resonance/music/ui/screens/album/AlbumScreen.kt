@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.resonance.music.ui.components.SongActions
 import com.resonance.music.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,8 +161,12 @@ fun AlbumScreen(
                             song = song,
                             trackNumber = song.track,
                             onClick = { viewModel.playSongAt(index) },
-                            onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
-                            onGoToAlbum = song.albumId?.let { id -> onAlbumClick?.let { nav -> { nav(id) } } }
+                            actions = SongActions(
+                                onPlayNext = { viewModel.playNext(song) },
+                                onAddToQueue = { viewModel.addToQueue(song) },
+                                onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                                onGoToAlbum = song.albumId?.let { id -> onAlbumClick?.let { nav -> { nav(id) } } }
+                            )
                         )
                     }
                 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.resonance.music.ui.components.AlbumListItem
 import com.resonance.music.ui.components.SlimTopBar
+import com.resonance.music.ui.components.SongActions
 import com.resonance.music.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -139,7 +140,13 @@ fun SearchScreen(
                     items(uiState.songs, key = { "song_${it.id}" }) { song ->
                         SongListItem(
                             song = song,
-                            onClick = { viewModel.playSong(song) }
+                            onClick = { viewModel.playSong(song) },
+                            actions = SongActions(
+                                onPlayNext = { viewModel.playNext(song) },
+                                onAddToQueue = { viewModel.addToQueue(song) },
+                                onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                                onGoToAlbum = song.albumId?.let { id -> { onAlbumClick(id) } }
+                            )
                         )
                     }
                 }

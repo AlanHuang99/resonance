@@ -157,6 +157,9 @@ class LibraryViewModel @Inject constructor(
         playbackManager.playSongs(songs, index)
     }
 
+    fun playNext(song: SongItem) = playbackManager.playNext(listOf(song))
+    fun addToQueue(song: SongItem) = playbackManager.addToQueue(listOf(song))
+
     /**
      * Re-fetch the visible tab for pull-to-refresh. Suspends until done so the
      * caller can stop the refresh indicator, and never flips isLoading — the

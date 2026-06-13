@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.resonance.music.ui.components.SongActions
 import com.resonance.music.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -157,7 +158,13 @@ fun PlaylistScreen(
                     SongListItem(
                         song = song,
                         trackNumber = index + 1,
-                        onClick = { viewModel.playSongAt(index) }
+                        onClick = { viewModel.playSongAt(index) },
+                        actions = SongActions(
+                            onPlayNext = { viewModel.playNext(song) },
+                            onAddToQueue = { viewModel.addToQueue(song) },
+                            onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                            onGoToAlbum = song.albumId?.let { id -> { onAlbumClick(id) } }
+                        )
                     )
                 }
             }

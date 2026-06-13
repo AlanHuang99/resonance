@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.resonance.music.ui.components.AlbumCard
 import com.resonance.music.ui.components.AlbumListItem
 import com.resonance.music.ui.components.SlimTopBar
+import com.resonance.music.ui.components.SongActions
 import com.resonance.music.ui.components.SongListItem
 
 enum class LibraryTab { Artists, Albums, Genres, Playlists, Favorites }
@@ -291,7 +292,13 @@ private fun FavoritesTab(
                 items(uiState.starredSongs, key = { it.id }, contentType = { "song" }) { song ->
                     SongListItem(
                         song = song,
-                        onClick = { viewModel.playStarredSong(song) }
+                        onClick = { viewModel.playStarredSong(song) },
+                        actions = SongActions(
+                            onPlayNext = { viewModel.playNext(song) },
+                            onAddToQueue = { viewModel.addToQueue(song) },
+                            onGoToArtist = song.artistId?.let { id -> { onArtistClick(id) } },
+                            onGoToAlbum = song.albumId?.let { id -> { onAlbumClick(id) } }
+                        )
                     )
                 }
             }
