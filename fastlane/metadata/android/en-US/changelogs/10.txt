@@ -1,0 +1,2 @@
+In 0.6.1:
+- Reproducible release builds, so a build from source can be verified against the published APK

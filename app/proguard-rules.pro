@@ -15,3 +15,10 @@
 
 # Media3
 -keep class androidx.media3.** { *; }
+
+# Reproducible builds: R8's ServiceLoader optimization builds a static service
+# list whose order can vary between builds, breaking byte-for-byte
+# reproducibility. Keep the coroutines ServiceLoader interfaces so R8 leaves the
+# lookup alone. See https://f-droid.org/docs/Reproducible_Builds/
+-keep class kotlinx.coroutines.CoroutineExceptionHandler
+-keep class kotlinx.coroutines.internal.MainDispatcherFactory

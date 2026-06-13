@@ -16,8 +16,8 @@ android {
         applicationId = "com.resonance.music"
         minSdk = 31
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.6.0"
+        versionCode = 10
+        versionName = "0.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -83,6 +83,16 @@ android {
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
+    }
+}
+
+// F-Droid reproducibility: the ART/baseline profile (assets/dexopt/baseline.prof)
+// that AGP compiles from merged library profiles is not byte-for-byte
+// reproducible, so disable its generation.
+// See https://f-droid.org/docs/Reproducible_Builds/
+tasks.configureEach {
+    if (name.contains("ArtProfile") || name.contains("StartupProfile")) {
+        enabled = false
     }
 }
 

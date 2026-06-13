@@ -2,6 +2,11 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [0.6.1] - 2026-06-13
+
+### Changed
+- Release builds are now reproducible: pinned R8 to a deterministic version and disabled the non-reproducible baseline profile, so a build from source can be verified against the published APK (for F-Droid)
+
 ## [0.6.0] - 2026-06-13
 
 ### Added
