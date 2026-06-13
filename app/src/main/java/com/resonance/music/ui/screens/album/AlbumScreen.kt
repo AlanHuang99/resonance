@@ -53,6 +53,24 @@ fun AlbumScreen(
                             tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
                         )
                     }
+                    var showAlbumMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showAlbumMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Album options")
+                        }
+                        DropdownMenu(expanded = showAlbumMenu, onDismissRequest = { showAlbumMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Play next") },
+                                onClick = { showAlbumMenu = false; viewModel.playAllNext() },
+                                leadingIcon = { Icon(Icons.Default.QueuePlayNext, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Add to queue") },
+                                onClick = { showAlbumMenu = false; viewModel.addAllToQueue() },
+                                leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                            )
+                        }
+                    }
                 }
             )
         }

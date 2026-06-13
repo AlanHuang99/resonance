@@ -51,6 +51,26 @@ fun PlaylistScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    var showPlaylistMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showPlaylistMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Playlist options")
+                        }
+                        DropdownMenu(expanded = showPlaylistMenu, onDismissRequest = { showPlaylistMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Play next") },
+                                onClick = { showPlaylistMenu = false; viewModel.playAllNext() },
+                                leadingIcon = { Icon(Icons.Default.QueuePlayNext, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Add to queue") },
+                                onClick = { showPlaylistMenu = false; viewModel.addAllToQueue() },
+                                leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                            )
+                        }
+                    }
                 }
             )
         }
