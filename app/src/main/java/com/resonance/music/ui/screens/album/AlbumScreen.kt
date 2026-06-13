@@ -1,6 +1,7 @@
 package com.resonance.music.ui.screens.album
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -134,7 +135,11 @@ fun AlbumScreen(
                         Text(
                             text = uiState.artistName,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (uiState.artistId != null) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = uiState.artistId?.let { id ->
+                                Modifier.clickable { onArtistClick(id) }
+                            } ?: Modifier
                         )
 
                         if (uiState.year != null || uiState.genre != null) {
