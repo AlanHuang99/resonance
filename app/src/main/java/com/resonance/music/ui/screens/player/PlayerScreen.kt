@@ -1,6 +1,7 @@
 package com.resonance.music.ui.screens.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,8 @@ fun PlayerScreen(
     onBackClick: () -> Unit,
     onLyricsClick: () -> Unit = {},
     onQueueClick: () -> Unit = {},
+    onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (String) -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -116,13 +119,17 @@ fun PlayerScreen(
                     text = uiState.artist,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().then(
+                        uiState.artistId?.let { id -> Modifier.clickable { onArtistClick(id) } } ?: Modifier
+                    )
                 )
                 MarqueeText(
                     text = uiState.album,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().then(
+                        uiState.albumId?.let { id -> Modifier.clickable { onAlbumClick(id) } } ?: Modifier
+                    )
                 )
             }
 

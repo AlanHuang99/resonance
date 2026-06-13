@@ -208,7 +208,15 @@ fun ResonanceNavHost(
                 PlayerScreen(
                     onBackClick = { navController.popBackStack() },
                     onLyricsClick = { navController.navigate(Routes.LYRICS) },
-                    onQueueClick = { navController.navigate(Routes.QUEUE) }
+                    onQueueClick = { navController.navigate(Routes.QUEUE) },
+                    onArtistClick = { id ->
+                        navController.popBackStack()
+                        navController.navigate(Routes.artist(id))
+                    },
+                    onAlbumClick = { id ->
+                        navController.popBackStack()
+                        navController.navigate(Routes.album(id))
+                    }
                 )
             }
 
