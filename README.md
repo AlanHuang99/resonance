@@ -10,6 +10,8 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/AlanHuang99/resonance)](https://github.com/AlanHuang99/resonance/releases/latest)
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="70">](https://f-droid.org/packages/com.resonance.music/)
+
 </div>
 
 ## Screenshots
@@ -45,9 +47,8 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 
 ## Install
 
-Download the latest APK from the [Releases](https://github.com/AlanHuang99/resonance/releases/latest) page and install it on your device.
-
-Publishing on [F-Droid](https://f-droid.org/) is planned.
+- **F-Droid:** install from [f-droid.org/packages/com.resonance.music](https://f-droid.org/packages/com.resonance.music/).
+- **GitHub:** download the latest `resonance-v<version>.apk` from the [Releases page](https://github.com/AlanHuang99/resonance/releases/latest).
 
 ## Build from source
 
@@ -66,7 +67,7 @@ cd resonance
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. To build and install straight to a connected device, use `./gradlew installDebug` instead.
 
-`./gradlew assembleRelease` produces a release APK and works without any signing secrets; the result is unsigned unless signing material is provided.
+`./gradlew assembleRelease` produces a release APK and works without any signing secrets; the result is unsigned unless signing material is provided. See [docs/RELEASE.md](docs/RELEASE.md) for the release and F-Droid workflow.
 
 ## Tech stack
 

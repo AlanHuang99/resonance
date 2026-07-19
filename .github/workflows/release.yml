@@ -1,0 +1,138 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish, for example v0.6.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build Signed APK and Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+      SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+      SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: release
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+            git fetch --tags --force
+            git checkout "$tag"
+          else
+            tag="$GITHUB_REF_NAME"
+          fi
+
+          case "$tag" in
+            v[0-9]*)
+              ;;
+            *)
+              echo "::error::Release tag must start with v followed by a version number."
+              exit 1
+              ;;
+          esac
+
+          version_name="$(sed -nE 's/[[:space:]]*versionName = "([^"]+)"/\1/p' app/build.gradle.kts | head -n 1)"
+          version_code="$(sed -nE 's/[[:space:]]*versionCode = ([0-9]+)/\1/p' app/build.gradle.kts | head -n 1)"
+
+          if [ "$tag" != "v${version_name}" ]; then
+            echo "::error::Tag $tag does not match Gradle versionName $version_name."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Validate release signing secrets
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            SIGNING_KEYSTORE_BASE64 \
+            SIGNING_STORE_PASSWORD \
+            SIGNING_KEY_ALIAS \
+            SIGNING_KEY_PASSWORD
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required GitHub Actions secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Decode release keystore
+        run: |
+          set -euo pipefail
+          keystore_path="$RUNNER_TEMP/resonance-release.keystore"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "SIGNING_KEYSTORE=$keystore_path" >> "$GITHUB_ENV"
+
+      - name: Run unit tests, lint, and signed release build
+        run: ./gradlew testDebugUnitTest lintDebug assembleRelease --stacktrace
+
+      - name: Prepare release assets
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp app/build/outputs/apk/release/app-release.apk "release-assets/resonance-${RELEASE_TAG}.apk"
+          cd release-assets
+          sha256sum "resonance-${RELEASE_TAG}.apk" > SHA256SUMS.txt
+
+      - name: Upload signed release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: resonance-${{ steps.release.outputs.tag }}-signed
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* \
+              --title "Resonance $RELEASE_TAG" \
+              --generate-notes \
+              --verify-tag
+          fi
