@@ -10,8 +10,7 @@ import retrofit2.http.Streaming
 
 interface SubsonicApi {
 
-    // Check the response before handing the transfer to Android. Some servers return
-    // a Subsonic error document with HTTP 200 when downloading is not permitted.
+    // Some servers return a Subsonic error document with HTTP 200 when downloading is not permitted.
     @Streaming
     @Headers("Range: bytes=0-0")
     @GET("rest/download")
