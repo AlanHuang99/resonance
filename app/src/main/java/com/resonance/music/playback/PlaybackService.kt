@@ -3,11 +3,17 @@ package com.resonance.music.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.resonance.music.MainActivity
@@ -20,6 +26,7 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
 
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
 
@@ -32,6 +39,12 @@ class PlaybackService : MediaSessionService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            // Hold a wake lock and Wi-Fi lock while playing so the stream keeps loading
+            // with the screen off. Needs the WAKE_LOCK permission.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(this).setLoadErrorHandlingPolicy(StreamLoadErrorPolicy())
+            )
             .build()
 
         // Skip past unplayable tracks instead of crashing, with a small guard
@@ -40,6 +53,10 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "Playback error: ${error.message}", error)
+                // A lost connection says nothing about the track, and skipping would just
+                // burn through the queue while offline. Stay on it; play re-prepares from
+                // the same position.
+                if (error.isConnectionError()) return
                 consecutiveFailures++
                 if (consecutiveFailures > 3) {
                     player.pause()
@@ -92,4 +109,32 @@ class PlaybackService : MediaSessionService() {
         mediaSession = null
         super.onDestroy()
     }
+}
+
+/** No network, a timeout, or a 5xx from the server or its proxy, as opposed to a bad track. */
+private fun PlaybackException.isConnectionError(): Boolean = when (errorCode) {
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> true
+    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
+        ((cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: 0) >= 500
+    else -> false
+}
+
+/**
+ * Rides out short network drops (a Wi-Fi/cellular handoff, a dead spot, a server
+ * restart) by retrying the stream for about 35 seconds while the player stays in
+ * BUFFERING, instead of failing after ExoPlayer's default 3 retries. A 4xx reply is
+ * the server's final answer, so it fails straight away instead of waiting that out.
+ */
+@OptIn(UnstableApi::class)
+private class StreamLoadErrorPolicy : DefaultLoadErrorHandlingPolicy() {
+
+    override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+        val responseCode = (loadErrorInfo.exception as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+        if (responseCode != null && responseCode in 400..499) return C.TIME_UNSET
+        return super.getRetryDelayMsFor(loadErrorInfo)
+    }
+
+    // The default backoff waits 0s, 1s, ... up to 5s between attempts: 10 retries is ~35s.
+    override fun getMinimumLoadableRetryCount(dataType: Int): Int = 10
 }
