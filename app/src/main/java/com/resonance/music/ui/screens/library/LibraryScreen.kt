@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
@@ -143,7 +144,7 @@ private fun AlbumsTab(
         var menuOpen by remember { mutableStateOf(false) }
         Box(modifier = Modifier.padding(start = 8.dp, top = 4.dp)) {
             TextButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(uiState.albumSort.label)
             }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -68,7 +69,7 @@ fun AlbumScreen(
                             DropdownMenuItem(
                                 text = { Text("Add to queue") },
                                 onClick = { showAlbumMenu = false; viewModel.addAllToQueue() },
-                                leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
                             )
                         }
                     }
