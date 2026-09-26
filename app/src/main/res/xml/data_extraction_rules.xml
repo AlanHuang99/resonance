@@ -3,8 +3,11 @@
     <cloud-backup>
         <!-- Never include stored server credentials in cloud backups -->
         <exclude domain="file" path="datastore/auth.preferences_pb" />
+        <!-- DownloadManager IDs refer to this device's download database. -->
+        <exclude domain="sharedpref" path="song_downloads.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore/auth.preferences_pb" />
+        <exclude domain="sharedpref" path="song_downloads.xml" />
     </device-transfer>
 </data-extraction-rules>
