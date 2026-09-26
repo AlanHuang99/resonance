@@ -1,10 +1,20 @@
 package com.resonance.music.data.api
 
 import com.resonance.music.data.api.models.SubsonicRoot
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface SubsonicApi {
+
+    // Some servers return a Subsonic error document with HTTP 200 when downloading is not permitted.
+    @Streaming
+    @Headers("Range: bytes=0-0")
+    @GET("rest/download")
+    suspend fun checkDownload(@Query("id") id: String): Response<ResponseBody>
 
     // --- System ---
 

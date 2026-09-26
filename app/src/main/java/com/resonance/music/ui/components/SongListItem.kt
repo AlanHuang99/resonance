@@ -21,6 +21,7 @@ fun SongListItem(
     actions: SongActions = SongActions()
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val downloadSong = LocalSongDownload.current
 
     ListItem(
         headlineContent = {
@@ -78,6 +79,13 @@ fun SongListItem(
                             text = { Text("Go to album") },
                             onClick = { showMenu = false; action() },
                             leadingIcon = { Icon(Icons.Default.Album, contentDescription = null) }
+                        )
+                    }
+                    downloadSong?.let { download ->
+                        DropdownMenuItem(
+                            text = { Text("Download") },
+                            onClick = { showMenu = false; download(song) },
+                            leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
                         )
                     }
                     actions.onGoToArtist?.let { action ->

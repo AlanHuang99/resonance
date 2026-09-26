@@ -226,17 +226,28 @@ private fun PlayerProgress(
     onSeek: (Float) -> Unit
 ) {
     val position by positionFlow.collectAsStateWithLifecycle()
+    // While dragging, the thumb follows the finger and the player is left alone; the seek
+    // is sent once on release. Seeking on every drag frame restarted the stream each time.
+    var dragProgress by remember { mutableStateOf<Float?>(null) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Slider(
-            value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-            onValueChange = onSeek,
+            value = dragProgress
+                ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+            onValueChange = { dragProgress = it },
+            onValueChangeFinished = {
+                dragProgress?.let(onSeek)
+                dragProgress = null
+            },
             modifier = Modifier.fillMaxWidth()
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(formatDuration(position), style = MaterialTheme.typography.labelSmall)
+            Text(
+                formatDuration(dragProgress?.let { (it * duration).toLong() } ?: position),
+                style = MaterialTheme.typography.labelSmall
+            )
             Text(formatDuration(duration), style = MaterialTheme.typography.labelSmall)
         }
     }

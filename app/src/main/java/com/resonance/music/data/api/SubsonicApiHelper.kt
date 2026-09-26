@@ -23,6 +23,9 @@ class SubsonicApiHelper(
     fun getStreamUrl(songId: String): String? =
         buildUrl("rest/stream", mapOf("id" to songId))
 
+    fun getDownloadUrl(songId: String): String? =
+        buildUrl("rest/download", mapOf("id" to songId))
+
     fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? =
         buildUrl("rest/getCoverArt", mapOf("id" to coverArtId, "size" to size.toString()))
 

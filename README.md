@@ -30,6 +30,7 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 - Browse by artist, album, and genre, and search across the library
 - Playback controls: play, pause, skip, seek, shuffle, and repeat
 - An editable play queue: play next, add to queue, reorder, and swipe to remove
+- Download individual songs in their original format to `Music/Resonance/Artist/Album`
 - Background playback with media-session and notification controls
 - Mini-player plus a full-screen player with swipe gestures
 - Favorites: star artists, albums, and songs
@@ -39,6 +40,12 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 - Scrobbling: report played tracks back to the server
 - Several color themes
 - No ads and no tracking; the only account is your own server
+
+## Downloads
+
+Open a song's three-dot menu and tap **Download**. Android handles the transfer and shows its progress and completion in notifications. Files are saved under `Music/Resonance/Artist/Album`, with track numbers and a short identifier in each filename to keep different songs separate. Repeated taps reuse an active or completed download.
+
+Saved files can be opened in a local music player or file manager. Resonance still streams playback from your server; this option does not add an offline library or automatic syncing. Your server account must allow downloads.
 
 ## Requirements
 
