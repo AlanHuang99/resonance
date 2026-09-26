@@ -1,0 +1,5 @@
+In 0.7.0:
+- Download original songs to Music/Resonance/Artist/Album from the song menu, with Android notifications and duplicate detection.
+- Keep streams loading with the screen off and retry temporary connection failures.
+- Fix play/pause while buffering and seek once when releasing the slider.
+- Use mirrored icons for direction-sensitive actions.

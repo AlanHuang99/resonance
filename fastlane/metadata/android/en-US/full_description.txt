@@ -7,6 +7,7 @@ Resonance is a music player for self-hosted, Subsonic-compatible servers such as
 <li>A home screen of recently played, newest, most played, and random albums</li>
 <li>Play, pause, skip, seek, shuffle, and repeat</li>
 <li>Edit the play queue by adding, removing, and reordering tracks</li>
+<li>Download original song files to Music/Resonance/Artist/Album for use in a local music player</li>
 <li>Background playback with a notification and lock-screen controls</li>
 <li>Search artists, albums, and songs</li>
 <li>Star artists, albums, and songs and browse your favorites</li>
