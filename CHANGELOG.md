@@ -2,6 +2,19 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Download a song from its menu to `Music/Resonance/Artist/Album`, preserving the original format, with Android download notifications and duplicate detection.
+
+### Fixed
+
+- Keep playback loading with the screen off and retry temporary connection failures without skipping through the queue.
+- Make play/pause work while buffering and allow playback to restart after an error or the end of the queue.
+- Seek once when releasing the progress slider instead of restarting the stream on every drag movement.
+- Use mirrored Compose icons for direction-sensitive song, album, library, and playlist actions.
+
 ## [0.6.1] - 2026-06-13
 
 ### Changed
