@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.resonance.music.data.api.SubsonicApiHelper
@@ -33,6 +34,7 @@ import javax.inject.Singleton
 
 data class NowPlaying(
     val song: SongItem? = null,
+    /** Playback is wanted, including while buffering: the pause button is showing. */
     val isPlaying: Boolean = false,
     val duration: Long = 0L
 )
@@ -84,8 +86,18 @@ class PlaybackManager @Inject constructor(
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            _nowPlaying.update { it.copy(isPlaying = isPlaying) }
             if (isPlaying) startPositionUpdates() else stopPositionUpdates()
+        }
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                    Player.EVENT_PLAYBACK_STATE_CHANGED,
+                    Player.EVENT_PLAYBACK_SUPPRESSION_REASON_CHANGED
+                )
+            ) {
+                _nowPlaying.update { it.copy(isPlaying = !Util.shouldShowPlayButton(player)) }
+            }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -151,7 +163,7 @@ class PlaybackManager @Inject constructor(
         _position.value = c.currentPosition
         _nowPlaying.value = NowPlaying(
             song = song,
-            isPlaying = c.isPlaying,
+            isPlaying = !Util.shouldShowPlayButton(c),
             duration = if (c.duration > 0) c.duration else (song?.duration?.toLong() ?: 0L) * 1000
         )
         // Report "now playing" to the server once per new track.
@@ -256,9 +268,11 @@ class PlaybackManager @Inject constructor(
         syncNowPlaying()
     }
 
+    /** Decides by playWhenReady, not isPlaying (false while buffering, so the button did
+     *  nothing). After an error or the end of the queue it re-prepares or rewinds first. */
     fun togglePlayPause() {
         val c = controller ?: return
-        if (c.isPlaying) c.pause() else c.play()
+        Util.handlePlayPauseButtonAction(c)
     }
 
     fun next() {
