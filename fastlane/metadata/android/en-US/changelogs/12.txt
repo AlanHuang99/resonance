@@ -1,0 +1,6 @@
+In 0.8.0:
+- Play saved music in the Downloads library, with progress, retry, and removal controls.
+- Download albums, playlists, and artists, and optionally sync favorite songs over Wi-Fi.
+- Browse, search, and play through Android Auto, including saved music offline.
+- Show album artwork and favorite/repeat actions in Android's media card.
+- Keep playback queues and favorite state synchronized across phone and car controls.

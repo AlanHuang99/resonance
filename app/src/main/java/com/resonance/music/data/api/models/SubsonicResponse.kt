@@ -27,6 +27,7 @@ data class SubsonicEnvelope(
     val artist: ArtistDetail? = null,
     val artistInfo2: ArtistInfo2? = null,
     val album: AlbumDetail? = null,
+    val song: SongItem? = null,
 
     // Album lists
     val albumList2: AlbumListContainer? = null,

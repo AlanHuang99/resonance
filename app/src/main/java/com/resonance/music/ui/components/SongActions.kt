@@ -5,6 +5,7 @@ import com.resonance.music.data.api.models.SongItem
 
 /** The activity owns download requests so navigating away from a song does not cancel them. */
 val LocalSongDownload = staticCompositionLocalOf<((SongItem) -> Unit)?> { null }
+val LocalCollectionDownload = staticCompositionLocalOf<((List<SongItem>) -> Unit)?> { null }
 
 /**
  * Per-song overflow-menu actions. Bundled so screens pass one object instead of

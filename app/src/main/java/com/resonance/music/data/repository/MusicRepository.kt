@@ -3,15 +3,23 @@ package com.resonance.music.data.repository
 import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.*
+import com.resonance.music.data.download.OfflineLibrary
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MusicRepository @Inject constructor(
     private val api: SubsonicApi,
-    private val apiHelper: SubsonicApiHelper
+    private val apiHelper: SubsonicApiHelper,
+    private val offlineLibrary: OfflineLibrary
 ) {
     // --- Artists ---
+
+    suspend fun getSong(id: String): SongItem? {
+        val response = api.getSong(id).response
+        if (!response.isOk) throw SubsonicException(response.error)
+        return response.song
+    }
 
     suspend fun getArtists(): List<ArtistItem> {
         val root = api.getArtists()
@@ -106,11 +114,13 @@ class MusicRepository @Inject constructor(
     // --- Favorites ---
 
     suspend fun star(id: String) {
-        api.star(id = id)
+        val response = api.star(id = id).response
+        if (!response.isOk) throw SubsonicException(response.error)
     }
 
     suspend fun unstar(id: String) {
-        api.unstar(id = id)
+        val response = api.unstar(id = id).response
+        if (!response.isOk) throw SubsonicException(response.error)
     }
 
     suspend fun starAlbum(albumId: String) {
@@ -175,7 +185,8 @@ class MusicRepository @Inject constructor(
     // --- URLs ---
 
     fun getStreamUrl(songId: String): String? = apiHelper.getStreamUrl(songId)
-    fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? = apiHelper.getCoverArtUrl(coverArtId, size)
+    fun getCoverArtUrl(coverArtId: String, size: Int = 300): String? =
+        offlineLibrary.artworkUri(coverArtId) ?: apiHelper.getCoverArtUrl(coverArtId, size)
 }
 
 class SubsonicException(error: SubsonicError?) : Exception(

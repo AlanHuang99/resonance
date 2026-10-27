@@ -21,6 +21,9 @@ interface SubsonicApi {
     @GET("rest/ping")
     suspend fun ping(): SubsonicRoot
 
+    @GET("rest/getSong")
+    suspend fun getSong(@Query("id") id: String): SubsonicRoot
+
     // --- Browsing ---
 
     @GET("rest/getArtists")

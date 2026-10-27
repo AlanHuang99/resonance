@@ -83,17 +83,6 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleFavorite() {
-        val song = playbackManager.nowPlaying.value.song ?: return
-        val wasFavorite = _uiState.value.isFavorite
-        // Optimistic update, reverted if the request fails
-        _uiState.value = _uiState.value.copy(isFavorite = !wasFavorite)
-        viewModelScope.launch {
-            val result = runCatching {
-                if (wasFavorite) musicRepository.unstar(song.id) else musicRepository.star(song.id)
-            }
-            if (result.isFailure) {
-                _uiState.value = _uiState.value.copy(isFavorite = wasFavorite)
-            }
-        }
+        playbackManager.toggleFavorite()
     }
 }

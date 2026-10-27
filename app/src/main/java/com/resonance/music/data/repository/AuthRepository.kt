@@ -11,6 +11,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,20 +61,30 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun saveCredentials(serverUrl: String, username: String, password: String) {
+    private val changes = Mutex()
+    private val mutableGeneration = MutableStateFlow(0L)
+    val generation = mutableGeneration.asStateFlow()
+
+    suspend fun saveCredentials(serverUrl: String, username: String, password: String) = changes.withLock {
         val creds = ServerCredentials(serverUrl.trimEnd('/'), username, password)
-        context.dataStore.edit { prefs ->
-            prefs[Keys.SERVER_URL] = creds.serverUrl
-            prefs[Keys.USERNAME] = creds.username
-            prefs[Keys.PASSWORD] = creds.password
-        }
-        cached = creds
-        cacheLoaded = true
+        mutableGeneration.value++
+        try {
+            context.dataStore.edit { prefs ->
+                prefs[Keys.SERVER_URL] = creds.serverUrl
+                prefs[Keys.USERNAME] = creds.username
+                prefs[Keys.PASSWORD] = creds.password
+            }
+            cached = creds
+            cacheLoaded = true
+        } finally { mutableGeneration.value++ }
     }
 
-    suspend fun logout() {
-        context.dataStore.edit { it.clear() }
-        cached = null
-        cacheLoaded = true
+    suspend fun logout() = changes.withLock {
+        mutableGeneration.value++
+        try {
+            context.dataStore.edit { it.clear() }
+            cached = null
+            cacheLoaded = true
+        } finally { mutableGeneration.value++ }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +46,7 @@ fun ArtistScreen(
     viewModel: ArtistViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val download = com.resonance.music.ui.components.LocalCollectionDownload.current
     val repeatMode by viewModel.repeatMode.collectAsState()
     var selectedTab by rememberSaveable { mutableStateOf(0) } // 0 = Albums, 1 = Tracks
 
@@ -62,6 +64,9 @@ fun ArtistScreen(
                     }
                 },
                 actions = {
+                    IconButton(enabled = uiState.tracks.isNotEmpty() && !uiState.tracksLoading, onClick = { download?.invoke(uiState.tracks) }) {
+                        Icon(Icons.Default.Download, "Download artist")
+                    }
                     IconButton(onClick = viewModel::toggleFavorite) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

@@ -33,6 +33,7 @@ fun PlaylistScreen(
     viewModel: PlaylistViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val download = com.resonance.music.ui.components.LocalCollectionDownload.current
 
     LaunchedEffect(playlistId) {
         viewModel.loadPlaylist(playlistId)
@@ -54,6 +55,9 @@ fun PlaylistScreen(
                     }
                 },
                 actions = {
+                    IconButton(enabled = uiState.songs.isNotEmpty(), onClick = { download?.invoke(uiState.songs) }) {
+                        Icon(Icons.Default.Download, "Download playlist")
+                    }
                     var showPlaylistMenu by remember { mutableStateOf(false) }
                     Box {
                         IconButton(onClick = { showPlaylistMenu = true }) {

@@ -2,20 +2,16 @@ package com.resonance.music.playback
 
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.resonance.music.data.api.SubsonicApiHelper
+import androidx.media3.session.SessionCommand
 import com.resonance.music.data.api.models.SongItem
-import com.resonance.music.data.repository.MusicRepository
-import com.resonance.music.data.repository.SettingsStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,9 +44,7 @@ enum class RepeatMode { OFF, ALL, ONE }
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val apiHelper: SubsonicApiHelper,
-    private val musicRepository: MusicRepository,
-    private val settingsStore: SettingsStore
+    private val mediaItems: MediaItems
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -76,14 +69,6 @@ class PlaybackManager @Inject constructor(
     private var pendingPlay: Pair<List<SongItem>, Int>? = null
     private var positionJob: Job? = null
 
-    @Volatile private var scrobbleEnabled = true
-    private var nowPlayingScrobbleId: String? = null
-    private var submittedScrobbleId: String? = null
-
-    init {
-        scope.launch { settingsStore.scrobbleEnabled.collect { scrobbleEnabled = it } }
-    }
-
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startPositionUpdates() else stopPositionUpdates()
@@ -97,6 +82,10 @@ class PlaybackManager @Inject constructor(
                 )
             ) {
                 _nowPlaying.update { it.copy(isPlaying = !Util.shouldShowPlayButton(player)) }
+            }
+            if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                _queue.value = (0 until player.mediaItemCount).map { MediaItems.song(player.getMediaItemAt(it)) }
+                syncNowPlaying()
             }
         }
 
@@ -166,12 +155,7 @@ class PlaybackManager @Inject constructor(
             isPlaying = !Util.shouldShowPlayButton(c),
             duration = if (c.duration > 0) c.duration else (song?.duration?.toLong() ?: 0L) * 1000
         )
-        // Report "now playing" to the server once per new track.
-        if (song != null && song.id != nowPlayingScrobbleId) {
-            nowPlayingScrobbleId = song.id
-            submittedScrobbleId = null
-            scrobble(song.id, submission = false)
-        }
+
     }
 
     fun playSongs(songs: List<SongItem>, startIndex: Int = 0) {
@@ -224,11 +208,10 @@ class PlaybackManager @Inject constructor(
         if (songs.isEmpty()) return
         val c = controller
         if (c == null || c.mediaItemCount == 0) { playSongs(songs); return }
-        val (items, kept) = buildItemsAndSongs(songs)
+        val (items, _) = buildItemsAndSongs(songs)
         if (items.isEmpty()) return
         val insertIndex = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
         c.addMediaItems(insertIndex, items)
-        _queue.update { QueueEdits.insertAt(it, insertIndex, kept) }
     }
 
     /** Append songs to the end of the queue. Starts a new queue if nothing is playing. */
@@ -236,10 +219,9 @@ class PlaybackManager @Inject constructor(
         if (songs.isEmpty()) return
         val c = controller
         if (c == null || c.mediaItemCount == 0) { playSongs(songs); return }
-        val (items, kept) = buildItemsAndSongs(songs)
+        val (items, _) = buildItemsAndSongs(songs)
         if (items.isEmpty()) return
         c.addMediaItems(c.mediaItemCount, items)
-        _queue.update { it + kept }
     }
 
     /** Remove the queue entry at [index]. If it is the current track, Media3 advances to the next. */
@@ -247,7 +229,6 @@ class PlaybackManager @Inject constructor(
         val c = controller ?: return
         if (index !in 0 until c.mediaItemCount) return
         c.removeMediaItem(index)
-        _queue.update { QueueEdits.removeAt(it, index) }
         syncNowPlaying()
     }
 
@@ -256,7 +237,6 @@ class PlaybackManager @Inject constructor(
         val c = controller ?: return
         if (from !in 0 until c.mediaItemCount || to !in 0 until c.mediaItemCount || from == to) return
         c.moveMediaItem(from, to)
-        _queue.update { QueueEdits.move(it, from, to) }
         syncNowPlaying()
     }
 
@@ -307,6 +287,10 @@ class PlaybackManager @Inject constructor(
         }
     }
 
+    fun toggleFavorite() {
+        controller?.sendCustomCommand(SessionCommand(LibrarySessionCallback.FAVORITE, Bundle.EMPTY), Bundle.EMPTY)
+    }
+
     fun getCurrentPosition(): Long = controller?.currentPosition ?: _position.value
 
     private fun startPositionUpdates() {
@@ -314,7 +298,6 @@ class PlaybackManager @Inject constructor(
         positionJob = scope.launch {
             while (isActive) {
                 controller?.let { _position.value = it.currentPosition }
-                maybeSubmitScrobble()
                 delay(500)
             }
         }
@@ -325,52 +308,12 @@ class PlaybackManager @Inject constructor(
         positionJob = null
     }
 
-    private fun maybeSubmitScrobble() {
-        val song = _nowPlaying.value.song ?: return
-        val duration = _nowPlaying.value.duration
-        if (duration <= 0 || song.id == submittedScrobbleId) return
-        // Submit once the track passes its halfway point or four minutes.
-        if (_position.value >= minOf(duration / 2, 240_000L)) {
-            submittedScrobbleId = song.id
-            scrobble(song.id, submission = true)
-        }
-    }
-
-    private fun scrobble(songId: String, submission: Boolean) {
-        if (!scrobbleEnabled) return
-        scope.launch {
-            runCatching { withContext(Dispatchers.IO) { musicRepository.scrobble(songId, submission) } }
-        }
-    }
-
     private fun buildMediaItem(song: SongItem): MediaItem? {
-        val uri = apiHelper.getStreamUrl(song.id) ?: return null
-        val artworkUri = song.coverArt?.let { apiHelper.getCoverArtUrl(it, 600) }
-        val extras = Bundle().apply { song.coverArt?.let { putString(EXTRA_COVER_ART, it) } }
-        return MediaItem.Builder()
-            .setUri(uri)
-            .setMediaId(song.id)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .setAlbumTitle(song.album)
-                    .setArtworkUri(artworkUri?.let { Uri.parse(it) })
-                    .setExtras(extras)
-                    .build()
-            )
-            .build()
+        return mediaItems.build(song)
     }
 
     private fun MediaItem.toSongItem(): SongItem {
-        val md = mediaMetadata
-        return SongItem(
-            id = mediaId,
-            title = md.title?.toString() ?: "",
-            artist = md.artist?.toString(),
-            album = md.albumTitle?.toString(),
-            coverArt = md.extras?.getString(EXTRA_COVER_ART)
-        )
+        return MediaItems.song(this)
     }
 
     private fun Int.toAppRepeatMode(): RepeatMode = when (this) {
@@ -379,7 +322,4 @@ class PlaybackManager @Inject constructor(
         else -> RepeatMode.OFF
     }
 
-    companion object {
-        private const val EXTRA_COVER_ART = "coverArt"
-    }
 }
