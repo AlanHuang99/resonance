@@ -23,10 +23,10 @@ The release workflow decodes the keystore into the runner's temporary directory.
 Every push and pull request to `master` runs:
 
 ```bash
-./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease --stacktrace
+./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease --stacktrace
 ```
 
-The CI workflow uploads debug APKs and verification reports as short-lived artifacts. It does not publish a release.
+The CI workflow compiles the device integration suite and uploads debug APKs and verification reports as short-lived artifacts. Device execution follows [DEVICE_TESTING.md](DEVICE_TESTING.md). CI does not publish a release.
 
 ## Prepare a release
 

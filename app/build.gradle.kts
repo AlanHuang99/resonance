@@ -16,8 +16,8 @@ android {
         applicationId = "com.resonance.music"
         minSdk = 31
         targetSdk = 34
-        versionCode = 11
-        versionName = "0.7.0"
+        versionCode = 12
+        versionName = "0.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,10 +53,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
+            if (providers.gradleProperty("deviceTest").isPresent) {
+                applicationIdSuffix = ".debug"
+                signingConfig = signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -116,6 +123,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.work)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -144,4 +152,6 @@ dependencies {
 
     // Unit tests (JVM) — queue transform logic
     testImplementation(libs.junit)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

@@ -21,8 +21,10 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 &nbsp;
 <img src="docs/screenshots/player.png" width="30%" alt="Now playing" />
 &nbsp;
-<img src="docs/screenshots/settings.png" width="30%" alt="Settings" />
+<img src="docs/screenshots/downloads.png" width="30%" alt="Downloads" />
 </div>
+
+![Android Auto playback](docs/screenshots/android-auto.png)
 
 ## Features
 
@@ -30,8 +32,11 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 - Browse by artist, album, and genre, and search across the library
 - Playback controls: play, pause, skip, seek, shuffle, and repeat
 - An editable play queue: play next, add to queue, reorder, and swipe to remove
-- Download individual songs in their original format to `Music/Resonance/Artist/Album`
-- Background playback with media-session and notification controls
+- Download songs, albums, playlists, and artists in their original format to `Music/Resonance/Artist/Album`
+- Play saved music inside Resonance, with a Downloads library, progress, retry, and removal controls
+- Optional Wi-Fi downloads of favorite songs
+- Android Auto library browsing, search, and playback through the shared media service
+- Background playback and a system media card with album art, transport controls, favorite, and repeat actions
 - Mini-player plus a full-screen player with swipe gestures
 - Favorites: star artists, albums, and songs
 - Artist pages with albums and tracks, play and shuffle, a biography, and similar artists
@@ -43,9 +48,17 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 
 ## Downloads
 
-Open a song's three-dot menu and tap **Download**. Android handles the transfer and shows its progress and completion in notifications. Files are saved under `Music/Resonance/Artist/Album`, with track numbers and a short identifier in each filename to keep different songs separate. Repeated taps reuse an active or completed download.
+Open a song's three-dot menu and tap **Download**, or use the download button on an album, playlist, or artist page. Android handles the transfers. Files are saved under `Music/Resonance/Artist/Album`, with track numbers and a short identifier in each filename to keep different songs separate. Repeated requests reuse active or completed downloads.
 
-Saved files can be opened in a local music player or file manager. Resonance still streams playback from your server; this option does not add an offline library or automatic syncing. Your server account must allow downloads.
+Open **Downloads** to play or shuffle saved songs without a connection, check progress, retry failures, or remove saved copies. Playback uses a downloaded copy whenever one is available. Downloads and artwork are kept separately for each server account. Your server account must allow downloads.
+
+Enable **Download favorite songs** in Downloads to sync favorite tracks over unmetered Wi-Fi. Background sync is scheduled every six hours and runs when Android's network and background-work conditions permit. Turning it off keeps existing files. Previous single-song exports become available in the offline library when you request their download again.
+
+## Android Auto and system controls
+
+Sign in on the phone, then open Resonance in Android Auto to browse downloads, albums, artists, playlists, and favorite songs. Search and playback use the same service and queue as the phone app. Sideloaded builds require Android Auto's developer setting for unknown sources during testing.
+
+During playback, Android's media card shows the current track, artist, album artwork, seek bar, transport controls, favorite, and repeat actions. The system supplies its layout. See [device testing](docs/DEVICE_TESTING.md) for the repeatable K60 checks and head-unit setup.
 
 ## Requirements
 

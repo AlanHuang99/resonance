@@ -15,20 +15,41 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaConstants
+import androidx.media3.session.DefaultMediaNotificationProvider
+import com.resonance.music.R
+import android.os.Bundle
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import com.resonance.music.data.repository.AuthRepository
+import com.resonance.music.data.download.OfflineLibrary
+import com.resonance.music.data.download.OfflineStatus
 import com.resonance.music.MainActivity
 
 /**
  * Owns the ExoPlayer and MediaSession. The UI never touches the player directly;
  * it connects a MediaController to this session via [PlaybackManager].
  */
-class PlaybackService : MediaSessionService() {
+@AndroidEntryPoint
+class PlaybackService : MediaLibraryService() {
 
-    private var mediaSession: MediaSession? = null
+    @Inject lateinit var sessionCallback: LibrarySessionCallback
+    @Inject lateinit var auth: AuthRepository
+    @Inject lateinit var offline: OfflineLibrary
+    @Inject lateinit var reporting: PlaybackReporting
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var mediaSession: MediaLibrarySession? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+        setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build().apply {
+            setSmallIcon(R.drawable.ic_launcher_monochrome)
+        })
 
         val player = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -51,6 +72,11 @@ class PlaybackService : MediaSessionService() {
         // against an infinite skip loop when many tracks fail in a row.
         var consecutiveFailures = 0
         player.addListener(object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_MEDIA_METADATA_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED)) {
+                    mediaSession?.let(sessionCallback::updateButtons)
+                }
+            }
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "Playback error: ${error.message}", error)
                 // A lost connection says nothing about the track, and skipping would just
@@ -74,9 +100,26 @@ class PlaybackService : MediaSessionService() {
             }
         })
 
-        mediaSession = MediaSession.Builder(this, player)
+        mediaSession = MediaLibrarySession.Builder(this, player, sessionCallback)
             .setSessionActivity(buildContentIntent())
+            .setSessionExtras(Bundle().apply {
+                putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_PREV, true)
+                putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_NEXT, true)
+            })
             .build()
+        mediaSession?.let(sessionCallback::updateButtons)
+        reporting.start(player)
+        serviceScope.launch {
+            offline.tracks.map { tracks -> tracks.filter { it.status == OfflineStatus.READY }.map { it.record.key } }
+                .distinctUntilChanged().collect { keys -> mediaSession?.notifyChildrenChanged("downloads", keys.size, null) }
+        }
+        serviceScope.launch {
+            var previous = auth.generation.value
+            auth.generation.collect { generation ->
+                if (generation != previous) { player.stop(); player.clearMediaItems() }
+                previous = generation
+            }
+        }
     }
 
     // Tapping the media notification opens the app.
@@ -92,7 +135,7 @@ class PlaybackService : MediaSessionService() {
         )
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val p = mediaSession?.player
@@ -102,6 +145,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
+        sessionCallback.release()
+        reporting.release()
         mediaSession?.run {
             player.release()
             release()

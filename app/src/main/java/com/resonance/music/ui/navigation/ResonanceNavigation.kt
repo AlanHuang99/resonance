@@ -36,6 +36,7 @@ import com.resonance.music.ui.screens.playlist.PlaylistScreen
 import com.resonance.music.ui.screens.queue.QueueScreen
 import com.resonance.music.ui.screens.search.SearchScreen
 import com.resonance.music.ui.screens.settings.SettingsScreen
+import com.resonance.music.ui.screens.downloads.DownloadsScreen
 
 object Routes {
     const val LOGIN = "login"
@@ -45,6 +46,7 @@ object Routes {
     const val PLAYER = "player"
     const val LYRICS = "lyrics"
     const val SETTINGS = "settings"
+    const val DOWNLOADS = "downloads"
     const val QUEUE = "queue"
     const val ALBUM = "album/{albumId}"
     const val ARTIST = "artist/{artistId}"
@@ -147,6 +149,12 @@ fun ResonanceNavHost(
                                     onClick = { onTabSelected(Routes.LIBRARY) }
                                 )
                                 NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Download, contentDescription = null) },
+                                    label = { Text("Downloads") },
+                                    selected = currentRoute == Routes.DOWNLOADS,
+                                    onClick = { onTabSelected(Routes.DOWNLOADS) }
+                                )
+                                NavigationBarItem(
                                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                                     label = { Text("Settings") },
                                     selected = currentRoute == Routes.SETTINGS,
@@ -232,6 +240,10 @@ fun ResonanceNavHost(
                     musicRepository = musicRepository,
                     onBackClick = { navController.popBackStack() }
                 )
+            }
+
+            composable(Routes.DOWNLOADS) {
+                DownloadsScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.SETTINGS) {

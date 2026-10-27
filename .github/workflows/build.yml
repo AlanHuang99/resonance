@@ -34,7 +34,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run unit tests, lint, and builds
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease --stacktrace
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7

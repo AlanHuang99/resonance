@@ -33,6 +33,7 @@ fun AlbumScreen(
     viewModel: AlbumViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val download = com.resonance.music.ui.components.LocalCollectionDownload.current
 
     LaunchedEffect(albumId) {
         viewModel.loadAlbum(albumId)
@@ -48,6 +49,9 @@ fun AlbumScreen(
                     }
                 },
                 actions = {
+                    IconButton(enabled = uiState.songs.isNotEmpty(), onClick = { download?.invoke(uiState.songs) }) {
+                        Icon(Icons.Default.Download, "Download album")
+                    }
                     IconButton(onClick = viewModel::toggleFavorite) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

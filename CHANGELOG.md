@@ -2,6 +2,22 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [Unreleased]
+
+## [0.8.0] - 2026-10-26
+
+### Added
+
+- In-app offline playback with a Downloads library, saved artwork, progress, retry, removal, and account isolation.
+- Album, playlist, and artist downloads, plus optional Wi-Fi syncing of favorite songs.
+- Android Auto discovery, library browsing, search, and playback through a shared MediaLibraryService.
+- System media-card artwork, favorite and repeat actions, and reserved previous/next controls.
+
+### Fixed
+
+- Synchronize the phone's queue and favorite state with external media controllers.
+- Report playback from the service so scrobbling also works when a car starts playback.
+
 ## [0.7.0] - 2026-09-25
 
 ### Added
