@@ -4,6 +4,12 @@ All notable changes to Resonance will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-27
+
+### Fixed
+
+- Keep bottom navigation labels on one line at narrow widths and larger text sizes, with an ellipsis when space is limited.
+
 ## [0.8.0] - 2026-10-26
 
 ### Added

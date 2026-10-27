@@ -1,0 +1,2 @@
+In 0.8.1:
+- Keep bottom navigation labels on one line at narrow widths and larger text sizes, with an ellipsis when space is limited.
