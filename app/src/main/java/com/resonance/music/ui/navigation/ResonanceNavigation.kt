@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -132,31 +133,31 @@ fun ResonanceNavHost(
                             ) {
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                                    label = { Text("Home") },
+                                    label = { Text("Home", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                                     selected = currentRoute == Routes.HOME,
                                     onClick = { onTabSelected(Routes.HOME) }
                                 )
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                    label = { Text("Search") },
+                                    label = { Text("Search", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                                     selected = currentRoute == Routes.SEARCH,
                                     onClick = { onTabSelected(Routes.SEARCH) }
                                 )
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                                    label = { Text("Library") },
+                                    label = { Text("Library", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                                     selected = currentRoute == Routes.LIBRARY,
                                     onClick = { onTabSelected(Routes.LIBRARY) }
                                 )
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Default.Download, contentDescription = null) },
-                                    label = { Text("Downloads") },
+                                    label = { Text("Downloads", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                                     selected = currentRoute == Routes.DOWNLOADS,
                                     onClick = { onTabSelected(Routes.DOWNLOADS) }
                                 )
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                                    label = { Text("Settings") },
+                                    label = { Text("Settings", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                                     selected = currentRoute == Routes.SETTINGS,
                                     onClick = { onTabSelected(Routes.SETTINGS) }
                                 )

@@ -65,6 +65,10 @@ Car artwork uses a read-only content provider, following Android's [media artwor
 
 Stop the head-unit server, remove the temporary port forwards, and restore Android Auto development settings and the phone's original network settings when finished. When removing test data, remove only the fixture music and test artifacts created by this procedure.
 
+## Navigation label check, 2026-10-27
+
+The K60 reproduced wrapped Downloads and Settings labels at a 360 dp screen width with 1.3 font scale. With single-line labels, all five tabs remained aligned at 320 dp and 360 dp widths and at the original display settings. The 360 dp check covered both Home and Downloads selected at 1.3 font scale. Labels use an ellipsis when needed, while accessibility text retains the full names. The phone's original density and font scale were restored after testing the minified release variant.
+
 ## Results, 2026-10-26
 
 Verified on a K60 running Android 16, using the separate test installation:
