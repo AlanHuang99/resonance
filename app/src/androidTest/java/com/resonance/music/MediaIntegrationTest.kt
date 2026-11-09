@@ -59,6 +59,66 @@ class MediaIntegrationTest {
         assertTrue(message, predicate())
     }
 
+    @Test fun blockedStreamRedirectShowsErrorWithoutSkipping() {
+        login()
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            instrumentation.uiAutomation.grantRuntimePermission(context.packageName, android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val loopback = java.net.InetAddress.getByName("127.0.0.1")
+        java.net.ServerSocket(0, 1, loopback).use { http ->
+            java.net.ServerSocket(0, 1, loopback).use { https ->
+                http.soTimeout = 15_000
+                https.soTimeout = 1_000
+                val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                val response = executor.submit {
+                    http.accept().use { socket ->
+                        socket.soTimeout = 5_000
+                        val reader = socket.getInputStream().bufferedReader()
+                        assertTrue(reader.readLine().startsWith("GET /rest/stream?"))
+                        while (!reader.readLine().isNullOrEmpty()) { }
+                        socket.getOutputStream().write((
+                            "HTTP/1.1 301 Moved Permanently\r\n" +
+                                "Location: https://127.0.0.1:${https.localPort}/rest/stream\r\n" +
+                                "Content-Length: 0\r\nConnection: close\r\n\r\n"
+                            ).toByteArray(Charsets.US_ASCII))
+                    }
+                }
+                var browser: MediaBrowser? = null
+                try {
+                    runBlocking { dependencies.auth().saveCredentials("http://127.0.0.1:${http.localPort}", "redirect-test", "fixture-only") }
+                    val items = listOf("redirect", "next").map { id ->
+                        dependencies.mediaItems().build(com.resonance.music.data.api.models.SongItem(id = id, title = id))!!
+                    }
+                    val controller = browser()
+                    browser = controller
+                    val failed = java.util.concurrent.CountDownLatch(1)
+                    main { controller.addListener(object : Player.Listener {
+                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) { failed.countDown() }
+                    }) }
+                    val popup = instrumentation.uiAutomation.executeAndWaitForEvent({
+                        main { controller.setMediaItems(items); controller.prepare(); controller.play() }
+                    }, { event ->
+                        event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED &&
+                            event.text.any { it.toString() == context.getString(R.string.stream_redirect_error) }
+                    }, 20_000)
+                    popup.recycle()
+                    assertTrue("Redirect fails promptly", failed.await(5, TimeUnit.SECONDS))
+                    response.get(5, TimeUnit.SECONDS)
+                    assertEquals("redirect", main { controller.currentMediaItem?.mediaId })
+                    assertFalse(main { controller.playWhenReady })
+                    assertEquals(androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, main { controller.playerError?.errorCode })
+                    assertThrows(java.net.SocketTimeoutException::class.java) { https.accept().close() }
+                } finally {
+                    browser?.let { controller -> main { controller.stop(); controller.release() } }
+                    context.stopService(android.content.Intent(context, PlaybackService::class.java))
+                    http.close()
+                    executor.shutdownNow()
+                    login()
+                }
+            }
+        }
+    }
+
     @Test fun downloadsPersistRejectErrorsAndIsolateAccounts() = runBlocking {
         login()
         val offline = dependencies.offline()

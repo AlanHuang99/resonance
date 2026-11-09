@@ -3,6 +3,7 @@ package com.resonance.music.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -79,6 +80,11 @@ class PlaybackService : MediaLibraryService() {
             }
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "Playback error: ${error.message}", error)
+                if ((error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode in 300..399) {
+                    Toast.makeText(this@PlaybackService, R.string.stream_redirect_error, Toast.LENGTH_LONG).show()
+                    player.pause()
+                    return
+                }
                 // A lost connection says nothing about the track, and skipping would just
                 // burn through the queue while offline. Stay on it; play re-prepares from
                 // the same position.
@@ -169,15 +175,15 @@ private fun PlaybackException.isConnectionError(): Boolean = when (errorCode) {
 /**
  * Rides out short network drops (a Wi-Fi/cellular handoff, a dead spot, a server
  * restart) by retrying the stream for about 35 seconds while the player stays in
- * BUFFERING, instead of failing after ExoPlayer's default 3 retries. A 4xx reply is
- * the server's final answer, so it fails straight away instead of waiting that out.
+ * BUFFERING, instead of failing after ExoPlayer's default 3 retries. An unhandled
+ * redirect or a 4xx reply fails straight away instead of waiting that out.
  */
 @OptIn(UnstableApi::class)
 private class StreamLoadErrorPolicy : DefaultLoadErrorHandlingPolicy() {
 
     override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
         val responseCode = (loadErrorInfo.exception as? HttpDataSource.InvalidResponseCodeException)?.responseCode
-        if (responseCode != null && responseCode in 400..499) return C.TIME_UNSET
+        if (responseCode != null && responseCode in 300..499) return C.TIME_UNSET
         return super.getRetryDelayMsFor(loadErrorInfo)
     }
 
