@@ -2,7 +2,7 @@
 
 All notable changes to Resonance will be documented in this file.
 
-## [Unreleased]
+## [0.8.3] - 2026-11-09
 
 ### Fixed
 

@@ -77,6 +77,10 @@ Car artwork uses a read-only content provider, following Android's [media artwor
 
 Stop the head-unit server, remove the temporary port forwards, and restore Android Auto development settings and the phone's original network settings when finished. When removing test data, remove only the fixture music and test artifacts created by this procedure.
 
+## Certificate checks, 2026-11-09
+
+K60 accepted the temporary user CA for API requests, streamed audio, artwork, and DownloadManager transfers. The same test rejected a hostname mismatch and a certificate signed by an untrusted CA.
+
 ## Results, 2026-11-08
 
 The unfixed build reproduced the offline lyrics process crash on K60 with Android 16/API 36. The 0.8.2 candidate passed 15 device integration tests, including lyrics failure recovery, cancellation on track changes, blocked stream redirects, downloads, artwork, account isolation, media browsing, transport controls, offline playback after process restart, and metered-network scheduling.
