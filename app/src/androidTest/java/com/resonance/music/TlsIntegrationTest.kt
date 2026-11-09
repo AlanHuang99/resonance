@@ -11,7 +11,9 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TlsIntegrationTest {
-    private fun open(url: String?) = java.net.URL(requireNotNull(url)).openConnection().run {
+    private fun open(url: String?) = java.net.URL(requireNotNull(url)).apply {
+        assertEquals("TLS checks must use a network URL", "https", protocol)
+    }.openConnection().run {
         connectTimeout = 5_000
         readTimeout = 5_000
         getInputStream()
@@ -30,7 +32,7 @@ class TlsIntegrationTest {
             open(dependencies.music().getStreamUrl("one")).use {
                 assertEquals("fLaC", String(it.readNBytes(4), Charsets.US_ASCII))
             }
-            open(dependencies.music().getCoverArtUrl("cover")).use {
+            open(dependencies.music().getCoverArtUrl("tls-network-cover")).use {
                 assertArrayEquals(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47), it.readNBytes(4))
             }
             dependencies.downloader().queue(songs.take(1))
