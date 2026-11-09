@@ -1,0 +1,1 @@
+Trust CA certificates installed in Android's user certificate store when connecting to a music server. Certificate-chain and hostname validation remain enabled.
