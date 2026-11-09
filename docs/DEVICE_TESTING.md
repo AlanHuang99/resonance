@@ -63,11 +63,9 @@ This property is for local device verification only. Normal release builds retai
 
 Open Downloads, play the saved album, and verify artwork and controls in Quick Settings and on the lock screen. Check pause/play, previous/next, seeking, favorite state, and all repeat modes against `adb -s 5ea17b71 shell dumpsys media_session`. Repeat playback after force-stopping the app and disconnecting the fixture. Verify collection download actions and a failed-download retry through the UI.
 
-## Lyrics and certificate regression checks
+## Lyrics regression checks
 
 With the fixture connected, run `LyricsIntegrationTest#lyricsFailureClearsPreviousSongAndLoading` and `LyricsIntegrationTest#switchingTracksCancelsPreviousLyrics`. These exercise structured lyrics, a failed legacy fallback, recovery through legacy lyrics, and a track change during a delayed request. After preparing three downloads, remove the fixture reverse mapping and force-stop the app, then run `LyricsIntegrationTest#offlineLyricsAfterProcessRestartDoesNotCrash`. In the minified variant, open lyrics while disconnected and verify that the screen remains open with no lyrics available.
-
-For TLS checks, create a disposable CA and a server certificate valid for `localhost`, then run the fixture on port 8766 with `--tls-cert CERT --tls-key KEY`. Run a second fixture on port 8767 with a certificate from a different CA. Install only the first CA through Android Settings and reverse both ports. Run `TlsIntegrationTest#installedUserCaSupportsApiArtworkAndDownloadsAndRejectsInvalidPeers`; it checks API calls, streaming, artwork, and downloads, then rejects the mismatched hostname `127.0.0.1` and the untrusted second CA. The test uses a separate fixture account and restores the original account. Remove the installed fixture CA, both reverse mappings, and the fixture servers afterward. If Android requires a screen credential or consent that is unavailable, record the TLS device checks as pending.
 
 ## Android Auto head unit
 
@@ -76,6 +74,14 @@ Use Google's [Desktop Head Unit](https://developer.android.com/training/cars/tes
 Car artwork uses a read-only content provider, following Android's [media artwork requirements](https://developer.android.com/training/cars/media/create-media-browser/media-artwork), checked on 2026-10-26. Verify images in browse lists as well as the player.
 
 Stop the head-unit server, remove the temporary port forwards, and restore Android Auto development settings and the phone's original network settings when finished. When removing test data, remove only the fixture music and test artifacts created by this procedure.
+
+## Results, 2026-11-08
+
+The unfixed build reproduced the offline lyrics process crash on K60 with Android 16/API 36. The 0.8.2 candidate passed 15 device integration tests, including lyrics failure recovery, cancellation on track changes, blocked stream redirects, downloads, artwork, account isolation, media browsing, transport controls, offline playback after process restart, and metered-network scheduling.
+
+The minified test variant restored a removed download through the album action and played its saved three-song queue after a process restart with Wi-Fi disabled and the fixture disconnected. Opening lyrics kept the screen open with no lyrics available. Media-card play/pause, next/previous, and repeat modes were checked against the media session.
+
+Desktop Head Unit checks verified browse artwork, album and artist navigation, search playback, playlist order, and offline Downloads playback after restarting the app. Test evidence is retained locally in the maintenance record.
 
 ## Navigation label check, 2026-10-27
 

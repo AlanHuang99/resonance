@@ -1,1 +1,1 @@
-Fix a crash when opening lyrics offline and clear previous lyrics when changing tracks. Support server CA certificates installed in Android's user certificate store. Show an error for unsupported stream redirects without skipping the selected track.
+Fix a crash when opening lyrics offline and clear previous lyrics when changing tracks. Show an error for unsupported stream redirects without skipping the selected track.

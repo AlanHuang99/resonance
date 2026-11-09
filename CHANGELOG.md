@@ -9,7 +9,6 @@ All notable changes to Resonance will be documented in this file.
 ### Fixed
 
 - Keep the lyrics screen open when the server is unavailable and clear previous lyrics when changing tracks.
-- Trust CA certificates installed in Android's user certificate store when connecting to a music server.
 - Stop playback and show an error when a stream redirects to an unsupported URL, preserving the selected track.
 
 ## [0.8.1] - 2026-10-27

@@ -103,8 +103,6 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. To build and 
 
 ## Server compatibility
 
-HTTPS servers can use a CA certificate installed in Android's user certificate store. Install your server's CA through Android Settings; the server certificate must be valid for the hostname in its URL.
-
 - [Navidrome](https://www.navidrome.org/)
 - Any server implementing the [Subsonic API](http://www.subsonic.org/pages/api.jsp)
 

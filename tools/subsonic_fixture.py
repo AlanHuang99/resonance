@@ -7,7 +7,6 @@ Notes: binds to loopback; connect the phone with adb reverse tcp:8765 tcp:8765.
 
 import argparse
 import json
-import ssl
 import threading
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -19,11 +18,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("assets", type=Path)
     parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--tls-cert", type=Path)
-    parser.add_argument("--tls-key", type=Path)
     args = parser.parse_args()
-    if bool(args.tls_cert) != bool(args.tls_key):
-        parser.error("--tls-cert and --tls-key must be provided together")
     counts = Counter()
     starred = {"one"}
     lock = threading.Lock()
@@ -162,10 +157,6 @@ def main():
                 pass
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    if args.tls_cert:
-        tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        tls.load_cert_chain(args.tls_cert, args.tls_key)
-        server.socket = tls.wrap_socket(server.socket, server_side=True)
     server.serve_forever()
 
 
