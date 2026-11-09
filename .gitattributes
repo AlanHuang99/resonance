@@ -1,0 +1,2 @@
+* text=auto eol=lf encoding=utf-8
+*.bat text eol=crlf encoding=utf-8
