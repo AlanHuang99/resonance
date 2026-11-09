@@ -2,6 +2,10 @@
 
 The device suite uses a separate `com.resonance.music.debug` installation and a local Subsonic fixture. The existing production installation and its account remain intact.
 
+## K60 reservation
+
+On alan-s, read `~/.config/voyager-maintenance/MACHINE.md`, acquire `~/.local/state/android-testing/k60.lock` with `flock`, and keep the owning shell alive through testing and cleanup. If occupied, wait and retry every 15 minutes. Use serial `5ea17b71` for every device command and set `ANDROID_SERIAL=5ea17b71` for Gradle instrumentation. Verify device codename `mondrian`, ADB authorization, Android version, screen availability, and existing test-package data before installing. Record and restore changed settings and remove only fixtures and port mappings owned by the run.
+
 ## Fixture
 
 From the project root, generate a short audio fixture, start the server, and forward its port to the connected phone:
@@ -10,7 +14,7 @@ From the project root, generate a short audio fixture, start the server, and for
 mkdir -p /tmp/resonance-fixture
 ffmpeg -nostdin -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=65' -c:a flac /tmp/resonance-fixture/tone.flac
 cp docs/icon.png /tmp/resonance-fixture/cover.png
-adb reverse tcp:8765 tcp:8765
+adb -s 5ea17b71 reverse tcp:8765 tcp:8765
 uv run --no-project tools/subsonic_fixture.py /tmp/resonance-fixture
 ```
 
@@ -22,9 +26,9 @@ In another terminal:
 
 ```bash
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-adb shell am instrument -w -e class 'com.resonance.music.MediaIntegrationTest#downloadsPersistRejectErrorsAndIsolateAccounts,com.resonance.music.MediaIntegrationTest#favoriteSyncQueuesWifiDownloadsAndCanBeDisabled,com.resonance.music.MediaIntegrationTest#browserDiscoversLibrarySearchesAndControlsPlayback,com.resonance.music.MediaIntegrationTest#legacyCarBrowserConnectsAndStartsPlaybackById,com.resonance.music.MediaIntegrationTest#artworkProviderSharesImagesAndRejectsWritesAndOtherAccounts,com.resonance.music.MediaIntegrationTest#carPlaylistSelectionPreservesItsOrder,com.resonance.music.MediaIntegrationTest#accountChangeRejectsInFlightPlaybackAndBrowse,com.resonance.music.MediaIntegrationTest#retryRepairsArtworkWithoutDownloadingAudioAgain,com.resonance.music.MediaIntegrationTest#voiceSearchRejectsAccountChanges' com.resonance.music.debug.test/androidx.test.runner.AndroidJUnitRunner
+adb -s 5ea17b71 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s 5ea17b71 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s 5ea17b71 shell am instrument -w -e class 'com.resonance.music.MediaIntegrationTest#downloadsPersistRejectErrorsAndIsolateAccounts,com.resonance.music.MediaIntegrationTest#favoriteSyncQueuesWifiDownloadsAndCanBeDisabled,com.resonance.music.MediaIntegrationTest#browserDiscoversLibrarySearchesAndControlsPlayback,com.resonance.music.MediaIntegrationTest#legacyCarBrowserConnectsAndStartsPlaybackById,com.resonance.music.MediaIntegrationTest#artworkProviderSharesImagesAndRejectsWritesAndOtherAccounts,com.resonance.music.MediaIntegrationTest#carPlaylistSelectionPreservesItsOrder,com.resonance.music.MediaIntegrationTest#accountChangeRejectsInFlightPlaybackAndBrowse,com.resonance.music.MediaIntegrationTest#retryRepairsArtworkWithoutDownloadingAudioAgain,com.resonance.music.MediaIntegrationTest#voiceSearchRejectsAccountChanges' com.resonance.music.debug.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The tests check completed transfers, local playback URIs, saved and streamed artwork, duplicate requests, denied downloads, missing-file recovery, account isolation, favorites sync, modern and legacy browsing, search, album and playlist queues, transport controls, and shared favorite/repeat state. The artwork provider also rejects writes, unpublished paths, and requests from a previous account. Delayed playback, browse, and voice-search requests are rejected after logout/login; a failed artwork fetch can be retried without downloading audio again.
@@ -32,15 +36,15 @@ The tests check completed transfers, local playback URIs, saved and streamed art
 After preparing downloads, disconnect the fixture and restart the app process before testing offline playback:
 
 ```bash
-adb reverse --remove tcp:8765
-adb shell am force-stop com.resonance.music.debug
-adb shell am instrument -w -e class 'com.resonance.music.MediaIntegrationTest#offlinePlaybackAfterProcessRestart' com.resonance.music.debug.test/androidx.test.runner.AndroidJUnitRunner
-adb reverse tcp:8765 tcp:8765
+adb -s 5ea17b71 reverse --remove tcp:8765
+adb -s 5ea17b71 shell am force-stop com.resonance.music.debug
+adb -s 5ea17b71 shell am instrument -w -e class 'com.resonance.music.MediaIntegrationTest#offlinePlaybackAfterProcessRestart' com.resonance.music.debug.test/androidx.test.runner.AndroidJUnitRunner
+adb -s 5ea17b71 reverse tcp:8765 tcp:8765
 ```
 
 For a full disconnected-device check, record the phone's existing network settings, temporarily disable its network connections, run the offline test, and restore those settings.
 
-To check Wi-Fi-only scheduling, record the active Wi-Fi network's metered override with `adb shell cmd netpolicy list wifi-networks`, temporarily set that network to metered with `adb shell cmd netpolicy set metered-network NETWORK_ID true`, and run `MediaIntegrationTest#wifiFavoritesWaitForUnmeteredNetwork`. It verifies that queued favorites issue no download or artwork requests. Restore the original override afterward (`undefined` for an automatic setting).
+To check Wi-Fi-only scheduling, record the active Wi-Fi network's metered override with `adb -s 5ea17b71 shell cmd netpolicy list wifi-networks`, temporarily set that network to metered with `adb -s 5ea17b71 shell cmd netpolicy set metered-network NETWORK_ID true`, and run `MediaIntegrationTest#wifiFavoritesWaitForUnmeteredNetwork`. It verifies that queued favorites issue no download or artwork requests. Restore the original override afterward (`undefined` for an automatic setting).
 
 ## Minified build and media card
 
@@ -48,14 +52,20 @@ Build a release variant signed with the debug key and using the test package ID:
 
 ```bash
 ./gradlew assembleRelease -PdeviceTest
-adb install -r app/build/outputs/apk/release/app-release.apk
-adb shell am force-stop com.resonance.music.debug
-adb shell am start -n com.resonance.music.debug/com.resonance.music.MainActivity
+adb -s 5ea17b71 install -r app/build/outputs/apk/release/app-release.apk
+adb -s 5ea17b71 shell am force-stop com.resonance.music.debug
+adb -s 5ea17b71 shell am start -n com.resonance.music.debug/com.resonance.music.MainActivity
 ```
 
 This property is for local device verification only. Normal release builds retain the production package ID and signing configuration. The minified test variant replaces the debug fixture app while retaining its downloaded files and metadata.
 
-Open Downloads, play the saved album, and verify artwork and controls in Quick Settings and on the lock screen. Check pause/play, previous/next, seeking, favorite state, and all repeat modes against `adb shell dumpsys media_session`. Repeat playback after force-stopping the app and disconnecting the fixture. Verify collection download actions and a failed-download retry through the UI.
+Open Downloads, play the saved album, and verify artwork and controls in Quick Settings and on the lock screen. Check pause/play, previous/next, seeking, favorite state, and all repeat modes against `adb -s 5ea17b71 shell dumpsys media_session`. Repeat playback after force-stopping the app and disconnecting the fixture. Verify collection download actions and a failed-download retry through the UI.
+
+## Lyrics and certificate regression checks
+
+With the fixture connected, run `LyricsIntegrationTest#lyricsFailureClearsPreviousSongAndLoading` and `LyricsIntegrationTest#switchingTracksCancelsPreviousLyrics`. These exercise structured lyrics, a failed legacy fallback, recovery through legacy lyrics, and a track change during a delayed request. After preparing three downloads, remove the fixture reverse mapping and force-stop the app, then run `LyricsIntegrationTest#offlineLyricsAfterProcessRestartDoesNotCrash`. In the minified variant, open lyrics while disconnected and verify that the screen remains open with no lyrics available.
+
+For TLS checks, create a disposable CA and a server certificate valid for `localhost`, then run the fixture on port 8766 with `--tls-cert CERT --tls-key KEY`. Run a second fixture on port 8767 with a certificate from a different CA. Install only the first CA through Android Settings and reverse both ports. Run `TlsIntegrationTest#installedUserCaSupportsApiArtworkAndDownloadsAndRejectsInvalidPeers`; it checks API calls, streaming, artwork, and downloads, then rejects the mismatched hostname `127.0.0.1` and the untrusted second CA. The test uses a separate fixture account and restores the original account. Remove the installed fixture CA, both reverse mappings, and the fixture servers afterward. If Android requires a screen credential or consent that is unavailable, record the TLS device checks as pending.
 
 ## Android Auto head unit
 
