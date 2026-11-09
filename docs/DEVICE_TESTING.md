@@ -63,9 +63,11 @@ This property is for local device verification only. Normal release builds retai
 
 Open Downloads, play the saved album, and verify artwork and controls in Quick Settings and on the lock screen. Check pause/play, previous/next, seeking, favorite state, and all repeat modes against `adb -s 5ea17b71 shell dumpsys media_session`. Repeat playback after force-stopping the app and disconnecting the fixture. Verify collection download actions and a failed-download retry through the UI.
 
-## Lyrics regression checks
+## Lyrics and certificate regression checks
 
 With the fixture connected, run `LyricsIntegrationTest#lyricsFailureClearsPreviousSongAndLoading` and `LyricsIntegrationTest#switchingTracksCancelsPreviousLyrics`. These exercise structured lyrics, a failed legacy fallback, recovery through legacy lyrics, and a track change during a delayed request. After preparing three downloads, remove the fixture reverse mapping and force-stop the app, then run `LyricsIntegrationTest#offlineLyricsAfterProcessRestartDoesNotCrash`. In the minified variant, open lyrics while disconnected and verify that the screen remains open with no lyrics available.
+
+For TLS checks, create a disposable CA and a server certificate valid for `localhost`, then run the fixture on port 8766 with `--tls-cert CERT --tls-key KEY`. Run a second fixture on port 8767 with a certificate from a different CA. Install only the first CA through Android Settings and reverse both ports. Run `TlsIntegrationTest#installedUserCaSupportsApiArtworkAndDownloadsAndRejectsInvalidPeers`; it checks API calls, streaming, artwork, and downloads, then rejects the mismatched hostname `127.0.0.1` and the untrusted second CA. The test uses a separate fixture account and restores the original account. Remove the installed fixture CA, both reverse mappings, and the fixture servers afterward. If Android requires a screen credential or consent that is unavailable, record the TLS device checks as pending.
 
 ## Android Auto head unit
 

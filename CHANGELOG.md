@@ -4,6 +4,10 @@ All notable changes to Resonance will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Trust CA certificates installed in Android's user certificate store when connecting to a music server.
+
 ## [0.8.2] - 2026-11-08
 
 ### Fixed
