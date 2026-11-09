@@ -17,4 +17,5 @@ interface DeviceDependencies {
     fun downloader(): SongDownloader
     fun offline(): OfflineLibrary
     fun mediaItems(): MediaItems
+    fun playback(): com.resonance.music.playback.PlaybackManager
 }

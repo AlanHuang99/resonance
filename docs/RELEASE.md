@@ -33,7 +33,7 @@ The CI workflow compiles the device integration suite and uploads debug APKs and
 1. Increment `versionCode` and set `versionName` in `app/build.gradle.kts`.
 2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` with no more than 500 characters.
 3. Add the same release to `CHANGELOG.md` and refresh README or store features only when user-facing behavior changed.
-4. Run a clean local gate: `./gradlew clean testDebugUnitTest lintDebug assembleDebug assembleRelease --stacktrace`.
+4. With JDK 17, run a clean local gate: `./gradlew clean testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease --stacktrace`, followed by the device checks in [DEVICE_TESTING.md](DEVICE_TESTING.md).
 5. Commit the complete release preparation, then create a `v<versionName>` tag on that commit.
 6. Push the release commit and tag only after receiving explicit approval to publish.
 

@@ -26,7 +26,10 @@ def main():
     release_song.set()
     release_search = threading.Event()
     release_search.set()
+    release_lyrics = threading.Event()
+    release_lyrics.set()
     failing_art = set()
+    lyrics_mode = "empty"
     songs = [dict(id=id_, title=title, album="Device Test Album", albumId="album", artist="Resonance Test", artistId="artist", track=i + 1, coverArt="cover", suffix="flac", contentType="audio/flac", duration=65, size=(args.assets / "tone.flac").stat().st_size) for i, (id_, title) in enumerate((("one", "First Light"), ("two", "Second Wave"), ("three", "Third Horizon")))]
 
     class Handler(BaseHTTPRequestHandler):
@@ -34,6 +37,7 @@ def main():
             pass
 
         def do_GET(self):
+            nonlocal lyrics_mode
             parsed = urlparse(self.path)
             endpoint = parsed.path.rsplit("/", 1)[-1].removesuffix(".view")
             params = parse_qs(parsed.query)
@@ -43,6 +47,12 @@ def main():
             if endpoint == "stats":
                 return self.send_json(dict(counts))
             if endpoint == "control":
+                if "lyrics" in params:
+                    lyrics_mode = params["lyrics"][0]
+                if params.get("holdLyrics") == ["true"]:
+                    release_lyrics.clear()
+                if params.get("holdLyrics") == ["false"]:
+                    release_lyrics.set()
                 if params.get("holdSong") == ["true"]:
                     release_song.clear()
                 if params.get("holdSong") == ["false"]:
@@ -93,7 +103,22 @@ def main():
             artist = dict(id="artist", name="Resonance Test", coverArt="artist-cover", albumCount=1)
             playlist = dict(id="playlist", name="Device Test Playlist", songCount=2, coverArt="playlist-cover")
             payload = {}
-            if endpoint == "getArtists":
+            if endpoint == "getLyricsBySongId":
+                mode = lyrics_mode
+                if identifier == "one":
+                    release_lyrics.wait(timeout=20)
+                if mode == "structured":
+                    payload = {"lyricsList": {"structuredLyrics": [{"synced": True, "line": [{"start": 0, "value": "Fixture synced lyrics"}]}]}}
+                elif mode in ("fail", "legacy"):
+                    self.send_error(404)
+                    return
+            elif endpoint == "getLyrics":
+                if lyrics_mode == "fail":
+                    self.send_error(503)
+                    return
+                if lyrics_mode == "legacy":
+                    payload = {"lyrics": {"value": "Fixture legacy lyrics"}}
+            elif endpoint == "getArtists":
                 payload = {"artists": {"index": [{"name": "R", "artist": [artist]}]}}
             elif endpoint == "getArtist":
                 payload = {"artist": dict(artist, album=[album])}
@@ -126,9 +151,13 @@ def main():
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
-    ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server.serve_forever()
 
 
 if __name__ == "__main__":

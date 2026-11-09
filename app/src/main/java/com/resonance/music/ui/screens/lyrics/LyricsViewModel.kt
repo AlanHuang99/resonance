@@ -5,9 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.resonance.music.data.repository.MusicRepository
 import com.resonance.music.playback.PlaybackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,15 +40,13 @@ class LyricsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LyricsUiState())
     val uiState: StateFlow<LyricsUiState> = _uiState.asStateFlow()
 
-    private var currentSongId: String? = null
-
     init {
         viewModelScope.launch {
-            playbackManager.nowPlaying.collect { nowPlaying ->
-                val song = nowPlaying.song
-                if (song != null && song.id != currentSongId) {
-                    currentSongId = song.id
-                    _uiState.value = _uiState.value.copy(
+            playbackManager.nowPlaying.map { it.song }.distinctUntilChangedBy { it?.id }.collectLatest { song ->
+                if (song == null) {
+                    _uiState.value = LyricsUiState()
+                } else {
+                    _uiState.value = LyricsUiState(
                         title = song.title,
                         artist = song.artist ?: "",
                         coverArtUrl = song.coverArt?.let { musicRepository.getCoverArtUrl(it) }
@@ -55,10 +57,9 @@ class LyricsViewModel @Inject constructor(
         }
     }
 
-    private fun loadLyrics(songId: String, artist: String?, title: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
+    private suspend fun loadLyrics(songId: String, artist: String?, title: String) {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        try {
             // Try structured/synced lyrics first (OpenSubsonic)
             val structured = musicRepository.getStructuredLyrics(songId)
             val syncedLyrics = structured.firstOrNull { it.synced }
@@ -99,6 +100,16 @@ class LyricsViewModel @Inject constructor(
                     )
                 }
             }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                plainLyrics = null,
+                lines = emptyList(),
+                isSynced = false,
+                currentLineIndex = -1
+            )
         }
     }
 

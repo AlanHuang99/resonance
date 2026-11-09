@@ -4,6 +4,7 @@ import com.resonance.music.data.api.SubsonicApi
 import com.resonance.music.data.api.SubsonicApiHelper
 import com.resonance.music.data.api.models.*
 import com.resonance.music.data.download.OfflineLibrary
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -176,6 +177,8 @@ class MusicRepository @Inject constructor(
             val env = root.response
             if (!env.isOk) return emptyList()
             env.lyricsList?.structuredLyrics ?: emptyList()
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: Exception) {
             // getLyricsBySongId may not be supported on older servers
             emptyList()
