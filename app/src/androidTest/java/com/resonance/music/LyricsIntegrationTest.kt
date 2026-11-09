@@ -35,7 +35,7 @@ class LyricsIntegrationTest {
 
     @Test fun lyricsFailureClearsPreviousSongAndLoading() {
         check(context.packageName.endsWith(".debug"))
-        runBlocking { dependencies.auth().saveCredentials("http://127.0.0.1:8765", "device-test", "fixture-only") }
+        runBlocking { dependencies.auth().saveCredentials("http://127.0.0.1:8765", fixtureUsername, "fixture-only") }
         val songs = runBlocking { dependencies.music().getAlbumDetail("album")!!.song!! }
         lateinit var viewModel: LyricsViewModel
         fixture("control?lyrics=structured")
@@ -80,7 +80,7 @@ class LyricsIntegrationTest {
 
     @Test fun switchingTracksCancelsPreviousLyrics() {
         check(context.packageName.endsWith(".debug"))
-        runBlocking { dependencies.auth().saveCredentials("http://127.0.0.1:8765", "device-test", "fixture-only") }
+        runBlocking { dependencies.auth().saveCredentials("http://127.0.0.1:8765", fixtureUsername, "fixture-only") }
         val songs = runBlocking { dependencies.music().getAlbumDetail("album")!!.song!! }
         val before = org.json.JSONObject(fixture("stats")).optInt("getLyricsBySongId")
         fixture("control?lyrics=structured&holdLyrics=true")

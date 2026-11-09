@@ -50,7 +50,7 @@ class MediaIntegrationTest {
 
     private fun login() = runBlocking {
         check(context.packageName.endsWith(".debug")) { "Device tests require the isolated test package" }
-        dependencies.auth().saveCredentials("http://127.0.0.1:8765", "device-test", "fixture-only")
+        dependencies.auth().saveCredentials("http://127.0.0.1:8765", fixtureUsername, "fixture-only")
     }
 
     private fun waitUntil(message: String, predicate: () -> Boolean) {
@@ -136,7 +136,7 @@ class MediaIntegrationTest {
             runBlocking { offline.refresh() }
             offline.tracks.value.any { it.record.song.id == "denied" && it.status == OfflineStatus.FAILED }
         }
-        dependencies.auth().saveCredentials("http://127.0.0.1:8765", "other-account", "fixture-only")
+        dependencies.auth().saveCredentials("http://127.0.0.1:8765", "$fixtureUsername-other", "fixture-only")
         waitUntil("Account change clears visible downloads") { offline.tracks.value.isEmpty() }
         assertNull(offline.localUri("one"))
         login()
@@ -243,7 +243,7 @@ class MediaIntegrationTest {
         assertTrue(runCatching { context.contentResolver.openFileDescriptor(uri, "rw")?.close() }.isFailure)
         val unknown = uri.buildUpon().path("../auth.preferences_pb").build()
         assertTrue(runCatching { context.contentResolver.openInputStream(unknown)?.close() }.isFailure)
-        dependencies.auth().saveCredentials("http://127.0.0.1:8765", "other-account", "fixture-only")
+        dependencies.auth().saveCredentials("http://127.0.0.1:8765", "$fixtureUsername-other", "fixture-only")
         try {
             assertTrue(runCatching { context.contentResolver.openInputStream(uri)?.close() }.isFailure)
         } finally { login() }

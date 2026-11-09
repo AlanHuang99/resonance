@@ -24,7 +24,7 @@ class TlsIntegrationTest {
         val auth = dependencies.auth()
         val original = auth.getCachedCredentials()
         try {
-            auth.saveCredentials("https://localhost:8766", "tls-device-test", "fixture-only")
+            auth.saveCredentials("https://localhost:8766", "$fixtureUsername-tls", "fixture-only")
             val songs = dependencies.music().getAlbumDetail("album")!!.song!!
             assertEquals(3, songs.size)
             open(dependencies.music().getStreamUrl("one")).use {
@@ -44,13 +44,13 @@ class TlsIntegrationTest {
             dependencies.offline().tracks.value.toList().forEach { dependencies.offline().remove(it) }
 
             for (url in listOf("https://127.0.0.1:8766", "https://localhost:8767")) {
-                auth.saveCredentials(url, "tls-device-test", "fixture-only")
+                auth.saveCredentials(url, "$fixtureUsername-tls", "fixture-only")
                 val failure = runCatching { dependencies.music().getAlbumDetail("album") }.exceptionOrNull()
                 assertNotNull("Invalid TLS peer must fail: $url", failure)
                 assertTrue("TLS validation must reject $url: $failure", failure is javax.net.ssl.SSLException)
             }
         } finally {
-            auth.saveCredentials("https://localhost:8766", "tls-device-test", "fixture-only")
+            auth.saveCredentials("https://localhost:8766", "$fixtureUsername-tls", "fixture-only")
             dependencies.offline().refresh()
             dependencies.offline().tracks.value.toList().forEach { dependencies.offline().remove(it) }
             if (original == null) auth.logout()

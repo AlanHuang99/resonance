@@ -20,6 +20,8 @@ uv run --no-project tools/subsonic_fixture.py /tmp/resonance-fixture
 
 The fixture binds to loopback and supplies three songs, an album, an artist, a two-song playlist in a different order from the album, favorites, search, and an intentionally denied download. The test account is `device-test` with password `fixture-only` at `http://127.0.0.1:8765`. The server records request counts without authentication parameters at `/stats`.
 
+When preserving an existing debug installation, pass the same unique account name to every instrumentation invocation with `-e fixtureUsername resonance-test-YYYYMMDD`. The fixture accepts this account with password `fixture-only`. It gives the run separate download keys and filenames. Record the original account and preferences, remove only the new account's downloads, and restore the original state afterward.
+
 ## Build and device suite
 
 In another terminal:
