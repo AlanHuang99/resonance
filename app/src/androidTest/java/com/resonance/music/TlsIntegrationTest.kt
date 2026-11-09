@@ -11,6 +11,12 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TlsIntegrationTest {
+    private fun open(url: String?) = java.net.URL(requireNotNull(url)).openConnection().run {
+        connectTimeout = 5_000
+        readTimeout = 5_000
+        getInputStream()
+    }
+
     @Test fun installedUserCaSupportsApiArtworkAndDownloadsAndRejectsInvalidPeers() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         check(context.packageName.endsWith(".debug"))
@@ -21,10 +27,10 @@ class TlsIntegrationTest {
             auth.saveCredentials("https://localhost:8766", "tls-device-test", "fixture-only")
             val songs = dependencies.music().getAlbumDetail("album")!!.song!!
             assertEquals(3, songs.size)
-            java.net.URL(dependencies.music().getStreamUrl("one")).openStream().use {
+            open(dependencies.music().getStreamUrl("one")).use {
                 assertEquals("fLaC", String(it.readNBytes(4), Charsets.US_ASCII))
             }
-            java.net.URL(dependencies.music().getCoverArtUrl("cover")).openStream().use {
+            open(dependencies.music().getCoverArtUrl("cover")).use {
                 assertArrayEquals(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47), it.readNBytes(4))
             }
             dependencies.downloader().queue(songs.take(1))
