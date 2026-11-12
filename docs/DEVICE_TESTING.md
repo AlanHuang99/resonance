@@ -77,6 +77,12 @@ Car artwork uses a read-only content provider, following Android's [media artwor
 
 Stop the head-unit server, remove the temporary port forwards, and restore Android Auto development settings and the phone's original network settings when finished. When removing test data, remove only the fixture music and test artifacts created by this procedure.
 
+## Casting, 2026-11-12
+
+Checked on a Nokia 7.2 (Android 11) against a real Google Home and a UPnP renderer. Discovery listed six Cast devices and the renderer; LOAD carried the right mime and artwork; resume position, pause/play mirroring, seek, track skip and stop all reached the device, with no spurious Pause across a track transition. Volume keys drove the receiver (0.6 at 9/15) and UPnP RenderingControl (13/20/26%). Repeat one re-queued the same track at the phone position, the queue window carried exactly one next track, and a skip on the speaker pulled the phone to the same song. A receiver quit recovered and resumed at 38.7s; a killed renderer restarted and restored at 75.7s; an unreachable renderer produced three backoff attempts and a "Lost connection" message instead of silence; and stopping on the device delivered STOP before the socket closed. A proxy advertising itself as a Cast device added 250ms of latency and dropped the connection every 12s: four drops, four reconnects, resumed at the phone's position.
+
+These runs used a local, uncommitted `minSdk 30` patch, because the released build targets Android 12+ and this phone is Android 11. Nothing in the casting code depends on the lowered minSdk.
+
 ## Certificate checks, 2026-11-09
 
 K60 accepted the temporary user CA for API requests, streamed audio, artwork, and DownloadManager transfers. The same test rejected a hostname mismatch and a certificate signed by an untrusted CA.

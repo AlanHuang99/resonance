@@ -26,6 +26,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.resonance.music.cast.CastManager
 import com.resonance.music.data.repository.AuthRepository
 import com.resonance.music.data.download.OfflineLibrary
 import com.resonance.music.data.download.OfflineStatus
@@ -42,6 +43,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var auth: AuthRepository
     @Inject lateinit var offline: OfflineLibrary
     @Inject lateinit var reporting: PlaybackReporting
+    @Inject lateinit var cast: CastManager
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var mediaSession: MediaLibrarySession? = null
 
@@ -151,6 +153,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        // The service is going away, so nothing can advance the renderer's queue any
+        // more: silence the speaker instead of leaving it playing on its own.
+        cast.disconnect(stopRenderer = true)
         serviceScope.cancel()
         sessionCallback.release()
         reporting.release()

@@ -34,6 +34,13 @@ class LibrarySessionCallback @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var favoriteBusy = false
 
+    /** Voice search asks for results twice in quick succession ([onSearch] then
+     *  [onGetSearchResult]); keep the last answer instead of hitting the server again. */
+    private var searchCache: Pair<String, List<MediaItem>>? = null
+
+    private fun cachedSearch(query: String, generation: Long): List<MediaItem>? =
+        searchCache?.takeIf { it.first == "$generation\u0000$query" }?.second
+
     override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
         if (!access.allowed(controller)) return MediaSession.ConnectionResult.reject()
         val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
@@ -42,22 +49,35 @@ class LibrarySessionCallback @Inject constructor(
     }
 
     override fun onGetLibraryRoot(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, params: LibraryParams?): ListenableFuture<LibraryResult<MediaItem>> = future {
-        LibraryResult.ofItem(library.root(), LibraryParams.Builder().setExtras(Bundle().apply {
+        // "Recently played" is a separate root the car asks for by hint, mirroring the
+        // app's mini player: one card for the track that is playing now.
+        val root = if (params?.isRecent == true) library.folder(CarLibrary.RECENT, "Recently played") else library.root()
+        LibraryResult.ofItem(root, LibraryParams.Builder().setExtras(Bundle().apply {
             putBoolean("android.media.browse.SEARCH_SUPPORTED", true)
+            // Tell the car to honour the per-item CONTENT_STYLE_* hints we attach.
+            putBoolean("android.media.browse.CONTENT_STYLE_SUPPORTED", true)
         }).build())
     }
 
     override fun onGetChildren(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, parentId: String, page: Int, pageSize: Int, params: LibraryParams?): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
         if (!library.signedIn()) LibraryResult.ofError(LibraryResult.RESULT_ERROR_SESSION_AUTHENTICATION_EXPIRED)
-        else try {
-            LibraryResult.ofItemList(libraryPage(withContext(Dispatchers.IO) { library.children(parentId) }, page, pageSize), params)
+        else if (parentId == CarLibrary.RECENT || params?.isRecent == true) {
+            LibraryResult.ofItemList(listOfNotNull(session.player.currentMediaItem), params)
+        } else try {
+            val items = withContext(Dispatchers.IO) { library.children(parentId) }
+            // Home is shelves of albums; page boundaries would cut a shelf in half, so
+            // it is served whole (a few dozen items).
+            val pageItems = if (parentId == CarLibrary.HOME) {
+                if (page == 0) items else emptyList()
+            } else libraryPage(items, page, pageSize)
+            LibraryResult.ofItemList(pageItems, params)
         } catch (error: CancellationException) { throw error }
         catch (_: Exception) { LibraryResult.ofError(LibraryResult.RESULT_ERROR_IO) }
     }
 
     override fun onGetItem(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, mediaId: String): ListenableFuture<LibraryResult<MediaItem>> = future {
         if (mediaId == CarLibrary.ROOT) LibraryResult.ofItem(library.root(), null)
-        else if (mediaId in listOf("downloads", "artists", "playlists", "favorites") || mediaId.contains(':')) {
+        else if (library.isFolder(mediaId)) {
             LibraryResult.ofItem(library.folder(mediaId, mediaId), null)
         } else {
             val result = withContext(Dispatchers.IO) { offline.refresh(); library.resolve(MediaItem.Builder().setMediaId(mediaId).build(), false) }.firstOrNull()
@@ -68,14 +88,18 @@ class LibrarySessionCallback @Inject constructor(
 
     override fun onSearch(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, query: String, params: LibraryParams?): ListenableFuture<LibraryResult<Void>> = future {
         val generation = auth.generation.value
-        val result = withContext(Dispatchers.IO) { library.search(query) }
+        val result = cachedSearch(query, generation) ?: withContext(Dispatchers.IO) { library.search(query) }
+            .also { searchCache = "$generation\u0000$query" to it }
         if (auth.generation.value != generation) throw CancellationException("Account changed")
         session.notifySearchResultChanged(browser, query, result.size, params)
         LibraryResult.ofVoid(params)
     }
 
     override fun onGetSearchResult(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, query: String, page: Int, pageSize: Int, params: LibraryParams?): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
-        LibraryResult.ofItemList(libraryPage(withContext(Dispatchers.IO) { library.search(query) }, page, pageSize), params)
+        LibraryResult.ofItemList(
+            libraryPage(cachedSearch(query, auth.generation.value) ?: withContext(Dispatchers.IO) { library.search(query) }, page, pageSize),
+            params
+        )
     }
 
     override fun onAddMediaItems(session: MediaSession, controller: MediaSession.ControllerInfo, mediaItems: MutableList<MediaItem>): ListenableFuture<MutableList<MediaItem>> = future {
@@ -92,32 +116,24 @@ class LibrarySessionCallback @Inject constructor(
         }
         var queue = resolved
         var index = if (startIndex == C.INDEX_UNSET) 0 else startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
+        // Only a car-side selection expands into its browsed queue. A bare media id
+        // (Auto's play-by-id, a controller, a test) is played exactly as asked;
+        // expanding it turned one request into the whole album and playback ran on
+        // past the requested track.
         val request = mediaItems.singleOrNull()
-        if (request != null && (CarLibrary.selection(request.mediaId) != null || !MediaItems.hasSong(request)) && resolved.size == 1) {
-            val selection = CarLibrary.selection(request.mediaId)
-            val browsedQueue = selection?.let {
-                try {
-                    withContext(Dispatchers.IO) {
-                        library.children(it.parent).filter { item -> item.mediaMetadata.isPlayable == true }
-                            .mapNotNull { item -> items.build(MediaItems.song(item)) }
-                    }
-                } catch (error: CancellationException) { throw error }
-                catch (_: Exception) { emptyList() }
-            }.orEmpty()
-            val albumId = MediaItems.song(resolved.first()).albumId
+        val selection = request?.let { CarLibrary.selection(it.mediaId) }
+        if (selection != null && resolved.size == 1) {
+            val browsedQueue = try {
+                withContext(Dispatchers.IO) {
+                    library.children(selection.parent).filter { item -> item.mediaMetadata.isPlayable == true }
+                        .mapNotNull { item -> items.build(MediaItems.song(item)) }
+                }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { emptyList() }
             if (browsedQueue.isNotEmpty()) {
-                val selected = selection?.index?.takeIf { browsedQueue.getOrNull(it)?.mediaId == resolved.first().mediaId }
+                val selected = selection.index.takeIf { browsedQueue.getOrNull(it)?.mediaId == resolved.first().mediaId }
                     ?: browsedQueue.indexOfFirst { it.mediaId == resolved.first().mediaId }
                 if (selected >= 0) { queue = browsedQueue; index = selected }
-            } else if (selection == null && albumId != null) {
-                val savedAlbum = offline.tracks.value.filter { it.status == OfflineStatus.READY && it.record.song.albumId == albumId }
-                    .mapNotNull { items.build(it.record.song) }
-                val album = if (savedAlbum.any { it.mediaId == resolved.first().mediaId }) savedAlbum
-                    else try { withContext(Dispatchers.IO) { library.children("album:$albumId").mapNotNull { items.build(MediaItems.song(it)) } } }
-                    catch (error: CancellationException) { throw error }
-                    catch (_: Exception) { emptyList() }
-                val selected = album.indexOfFirst { it.mediaId == resolved.first().mediaId }
-                if (selected >= 0) { queue = album; index = selected }
             }
         }
         MediaSession.MediaItemsWithStartPosition(queue, index, startPositionMs)

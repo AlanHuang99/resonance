@@ -10,6 +10,7 @@ retrofit = "2.11.0"
 okhttp = "4.12.0"
 navigationCompose = "2.7.7"
 coil = "2.7.0"
+json = "20240303"
 datastore = "1.1.1"
 coroutines = "1.8.1"
 lifecycle = "2.8.4"
@@ -58,6 +59,8 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 
 # Image loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+# Real org.json for JVM unit tests: the android.jar copy is a throwing stub.
+json = { module = "org.json:json", version.ref = "json" }
 
 # Coroutines
 kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }

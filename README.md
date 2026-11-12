@@ -35,6 +35,7 @@ An open-source Android client for [Navidrome](https://www.navidrome.org/) and ot
 - Download songs, albums, playlists, and artists in their original format to `Music/Resonance/Artist/Album`
 - Play saved music inside Resonance, with a Downloads library, progress, retry, and removal controls
 - Optional Wi-Fi downloads of favorite songs
+- Cast to DLNA/UPnP speakers and Google Cast devices (Chromecast, Google Home) on your network
 - Android Auto library browsing, search, and playback through the shared media service
 - Background playback and a system media card with album art, transport controls, favorite, and repeat actions
 - Mini-player plus a full-screen player with swipe gestures

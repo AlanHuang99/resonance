@@ -166,7 +166,7 @@ class MediaIntegrationTest {
             val query = main { browser.getSearchResult("Second", 0, 20, null) }.get(15, TimeUnit.SECONDS).value!!
             assertEquals("two", query.single().mediaId)
             main { browser.setMediaItem(MediaItem.Builder().setMediaId("two").build()); browser.prepare(); browser.play() }
-            waitUntil("A car song selection builds its album queue") { main { browser.mediaItemCount == 3 && browser.currentMediaItem?.mediaId == "two" && browser.isPlaying } }
+            waitUntil("A bare media id plays only that song") { main { browser.mediaItemCount == 1 && browser.currentMediaItem?.mediaId == "two" && browser.isPlaying } }
             main { browser.setMediaItems(album); browser.prepare(); browser.play() }
             waitUntil("Browser starts playback") { main { browser.isPlaying } }
             main { browser.seekToNextMediaItem() }

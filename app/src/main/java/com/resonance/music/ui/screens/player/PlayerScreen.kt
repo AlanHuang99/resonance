@@ -36,6 +36,8 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val castDevice by viewModel.castSession.collectAsStateWithLifecycle()
+    var castSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -214,8 +216,22 @@ fun PlayerScreen(
                 IconButton(onClick = onQueueClick) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
+                IconButton(onClick = { castSheet = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Cast,
+                        contentDescription = if (castDevice != null) "Casting to ${castDevice?.name}" else "Cast",
+                        tint = if (castDevice != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
+    }
+
+    if (castSheet) {
+        CastSheet(
+            viewModel = viewModel,
+            onDismiss = { castSheet = false }
+        )
     }
 }
 
@@ -258,4 +274,74 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
+}
+
+/** Speaker picker. Same flow as any cast UI: scan, pick, or stop. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CastSheet(
+    viewModel: PlayerViewModel,
+    onDismiss: () -> Unit
+) {
+    val devices by viewModel.castDevices.collectAsStateWithLifecycle()
+    val session by viewModel.castSession.collectAsStateWithLifecycle()
+    val busy by viewModel.castBusy.collectAsStateWithLifecycle()
+    val error by viewModel.castError.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { if (devices.isEmpty()) viewModel.scanForCastDevices() }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Cast to", style = MaterialTheme.typography.titleMedium)
+                if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                else TextButton(onClick = { viewModel.scanForCastDevices() }) { Text("Rescan") }
+            }
+
+            session?.let { device ->
+                ListItem(
+                    headlineContent = { Text(device.name) },
+                    supportingContent = { Text("Casting") },
+                    trailingContent = {
+                        TextButton(onClick = {
+                            viewModel.stopCasting()
+                            onDismiss()
+                        }) { Text("Stop") }
+                    }
+                )
+            }
+
+            if (devices.isEmpty() && !busy) {
+                Text(
+                    error ?: "No speakers found on this network",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            devices.filter { it.id != session?.id }.forEach { device ->
+                ListItem(
+                    headlineContent = { Text(device.name) },
+                    modifier = Modifier.clickable {
+                        viewModel.castTo(device)
+                        onDismiss()
+                    }
+                )
+            }
+
+            error?.takeIf { devices.isNotEmpty() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 }
