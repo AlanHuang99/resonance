@@ -11,8 +11,13 @@ import javax.inject.Inject
 class ControllerAccess @Inject constructor(@ApplicationContext private val context: Context) {
     fun allowed(controller: MediaSession.ControllerInfo): Boolean {
         if (controller.uid == Process.myUid() || controller.isTrusted) return true
-        val certificates = CAR_CERTIFICATES[controller.packageName] ?: return false
+        // System media clients are not flagged trusted on every OEM build, and rejecting
+        // them breaks the notification's media card and Bluetooth transport controls
+        // (com.android.systemui connects with its own uid). They already see the
+        // notification, so nothing here is more exposed than what is on screen.
         val packages = context.packageManager.getPackagesForUid(controller.uid).orEmpty()
+        if (controller.uid == Process.SYSTEM_UID || packages.any { it in SYSTEM_CLIENTS }) return true
+        val certificates = CAR_CERTIFICATES[controller.packageName] ?: return false
         if (controller.packageName !in packages) return false
         return certificates.any { certificate ->
             context.packageManager.hasSigningCertificate(controller.packageName,
@@ -22,6 +27,18 @@ class ControllerAccess @Inject constructor(@ApplicationContext private val conte
     }
 
     companion object {
+        /**
+         * Platform components that legitimately drive or display playback. Android Auto is
+         * deliberately absent: it is the one caller that must prove its signing certificate,
+         * and allowing it by name here would bypass the pinning below.
+         */
+        private val SYSTEM_CLIENTS = setOf(
+            "com.android.systemui",
+            "com.android.bluetooth",
+            "com.android.settings",
+            "com.android.shell"
+        )
+
         // Production signing certificates published by Android's Universal Android Music Player sample.
         // https://github.com/android/uamp/blob/main/common/src/main/res/xml/allowed_media_browser_callers.xml
         private val CAR_CERTIFICATES = mapOf(
