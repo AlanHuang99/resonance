@@ -2,6 +2,8 @@ package com.resonance.music.ui.screens.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.resonance.music.cast.CastDevice
+import com.resonance.music.cast.CastManager
 import com.resonance.music.data.repository.MusicRepository
 import com.resonance.music.playback.PlaybackManager
 import com.resonance.music.playback.RepeatMode
@@ -29,11 +31,17 @@ data class PlayerUiState(
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val playbackManager: PlaybackManager,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val cast: CastManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    val castDevices = cast.devices
+    val castSession = cast.session
+    val castBusy = cast.busy
+    val castError = cast.error
 
     /** Position ticks live in their own flow so they don't recompose the whole screen. */
     val position: StateFlow<Long> = playbackManager.position
@@ -85,4 +93,10 @@ class PlayerViewModel @Inject constructor(
     fun toggleFavorite() {
         playbackManager.toggleFavorite()
     }
+
+    fun scanForCastDevices() = cast.scan()
+
+    fun castTo(device: CastDevice) = playbackManager.castTo(device)
+
+    fun stopCasting() = playbackManager.stopCasting()
 }

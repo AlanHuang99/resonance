@@ -52,6 +52,12 @@ android {
         }
     }
 
+    testOptions {
+        // android.util.Log and friends are stubs on the JVM; the cast socket tests need
+        // them to no-op rather than throw.
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -152,6 +158,7 @@ dependencies {
 
     // Unit tests (JVM) — queue transform logic
     testImplementation(libs.junit)
+    testImplementation(libs.json)
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

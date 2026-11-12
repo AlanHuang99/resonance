@@ -11,7 +11,12 @@ import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.session.SessionCommand
+import com.resonance.music.cast.CastDevice
+import com.resonance.music.cast.CastManager
 import com.resonance.music.data.api.models.SongItem
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlin.math.abs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,7 +48,8 @@ enum class RepeatMode { OFF, ALL, ONE }
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val mediaItems: MediaItems
+    private val mediaItems: MediaItems,
+    private val cast: CastManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -58,6 +63,8 @@ class PlaybackManager @Inject constructor(
     val position: StateFlow<Long> = _position.asStateFlow()
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
+    /** Index into [queue] of the current track, cached so casting can read it off-thread. */
+    private val _queueIndex = MutableStateFlow(0)
     val queue: StateFlow<List<SongItem>> = _queue.asStateFlow()
 
     private val _shuffleEnabled = MutableStateFlow(false)
@@ -68,10 +75,62 @@ class PlaybackManager @Inject constructor(
 
     private var pendingPlay: Pair<List<SongItem>, Int>? = null
     private var positionJob: Job? = null
+    private var castSyncJob: Job? = null
+    private var volumeBeforeCast = 1f
+
+    init {
+        // While casting, the phone player is the clock: mute it (the renderer is
+        // audible) and restore the user's volume when the session ends, including
+        // when it ends because the renderer refused the stream.
+        scope.launch {
+            cast.session.collect { device ->
+                controller?.let { c ->
+                    if (device == null) {
+                        c.volume = volumeBeforeCast
+                    } else {
+                        if (c.volume > 0f) volumeBeforeCast = c.volume
+                        c.volume = 0f
+                    }
+                }
+                castSyncJob?.cancel()
+                castSyncJob = device?.let { scope.launch { castSyncLoop() } }
+            }
+        }
+    }
+
+    /** Follow the renderer so the phone UI matches it: a pause pressed on the speaker
+     *  pauses here too, and a position that drifts away is pulled back.
+     *
+     *  Only pause is mirrored, never play: a renderer that ignores a command must not
+     *  be able to start audio on the phone. STOPPED is ignored because renderers also
+     *  report it between tracks, where the local player already advances the queue. */
+    private suspend fun castSyncLoop() {
+        while (currentCoroutineContext().isActive) {
+            delay(CAST_POLL_MS)
+            val remote = cast.remoteState() ?: continue
+            val c = controller ?: continue
+            when (remote.state) {
+                "PAUSED_PLAYBACK" -> if (c.playWhenReady) c.pause()
+                // A device that reports 0 is not saying "at the start", it is saying it has
+                // no position for us; seeking there would restart the track on every poll.
+                "PLAYING" -> if (c.playWhenReady && remote.positionMs > 0 &&
+                    abs(c.currentPosition - remote.positionMs) > CAST_DRIFT_MS) {
+                    c.seekTo(remote.positionMs)
+                }
+            }
+        }
+    }
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startPositionUpdates() else stopPositionUpdates()
+        }
+
+        /** Mirror the user's intent, not [isPlaying]: buffering gaps during a track
+         *  change also flip isPlaying false, and forwarding those would pause the
+         *  renderer between tracks. */
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            cast.onPlayState(playWhenReady)
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
@@ -85,12 +144,25 @@ class PlaybackManager @Inject constructor(
             }
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_METADATA_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
                 _queue.value = (0 until player.mediaItemCount).map { MediaItems.song(player.getMediaItemAt(it)) }
+                _queueIndex.value = player.currentMediaItemIndex
                 syncNowPlaying()
+                // The queue may have been reordered or trimmed; the device holds its own copy.
+                cast.onQueueChanged()
             }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             syncNowPlaying()
+            // Keep the renderer on the same track; the local player is the clock.
+            controller?.let { cast.onItem(mediaItem, 0L, it.playWhenReady) }
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) cast.onSeek(newPosition.positionMs)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -103,6 +175,8 @@ class PlaybackManager @Inject constructor(
 
         override fun onRepeatModeChanged(repeatMode: Int) {
             _repeatMode.value = repeatMode.toAppRepeatMode()
+            // Repeat one changes what the device should have queued behind this track.
+            cast.onQueueChanged()
         }
     }
 
@@ -127,6 +201,22 @@ class PlaybackManager @Inject constructor(
     }
 
     private fun onControllerReady(c: MediaController) {
+        // Lets a dropped cast session resume where the phone player actually is.
+        // Media3 only allows player access on the app thread, and casting reads these
+        // from IO coroutines, so hand over the cached state the listeners keep instead.
+        cast.phonePosition = { _position.value }
+        cast.nextSong = { _queue.value.getOrNull(_queueIndex.value + 1) }
+        cast.phoneIsPlaying = { _nowPlaying.value.isPlaying }
+        cast.phoneRepeatMode = { _repeatMode.value }
+        // A track skipped on the speaker itself: follow it, or the phone clock drifts from
+        // what is actually playing in the room. This arrives on the cast socket's reader
+        // thread, and Media3 only allows player access on the app thread.
+        cast.onRemoteTrack = { songId ->
+            scope.launch {
+                val index = _queue.value.indexOfFirst { it.id == songId }
+                if (index >= 0 && index != _queueIndex.value) controller?.seekTo(index, 0L)
+            }
+        }
         _shuffleEnabled.value = c.shuffleModeEnabled
         _repeatMode.value = c.repeatMode.toAppRepeatMode()
 
@@ -292,6 +382,22 @@ class PlaybackManager @Inject constructor(
     }
 
     fun getCurrentPosition(): Long = controller?.currentPosition ?: _position.value
+
+    private companion object {
+        const val CAST_POLL_MS = 2000L
+        const val CAST_DRIFT_MS = 3000L
+    }
+
+    /** Hand playback to a renderer. The local player keeps running muted so the
+     *  queue, notification, car UI and position all stay authoritative. */
+    fun castTo(device: CastDevice) {
+        val c = controller ?: return
+        cast.connect(device, c.currentMediaItem, c.currentPosition, c.playWhenReady)
+    }
+
+    /** Ends the session and silences the renderer, so audio does not keep playing
+     *  there after the user switched back to the phone. */
+    fun stopCasting() = cast.disconnect(stopRenderer = true)
 
     private fun startPositionUpdates() {
         positionJob?.cancel()
