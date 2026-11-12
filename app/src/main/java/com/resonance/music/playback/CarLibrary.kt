@@ -1,15 +1,19 @@
 package com.resonance.music.playback
 
+import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.resonance.music.R
 import com.resonance.music.data.api.models.AlbumItem
 import com.resonance.music.data.api.models.SongItem
 import com.resonance.music.data.download.OfflineLibrary
 import com.resonance.music.data.download.OfflineStatus
 import com.resonance.music.data.repository.AuthRepository
 import com.resonance.music.data.repository.MusicRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
@@ -26,7 +30,8 @@ class CarLibrary @Inject constructor(
     private val offline: OfflineLibrary,
     private val auth: AuthRepository,
     private val mediaItems: MediaItems,
-    private val artwork: ArtworkStore
+    private val artwork: ArtworkStore,
+    @ApplicationContext private val context: Context
 ) {
     fun signedIn() = auth.getCachedCredentials() != null
     fun root() = folder(ROOT, "Resonance")
@@ -37,16 +42,16 @@ class CarLibrary @Inject constructor(
         return when {
             parent == ROOT -> listOf(
                 folder(HOME, "Home", "Your shelves", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
-                folder(LIBRARY, "Library", "Artists, albums, genres", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
-                folder("downloads", "Downloads", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                folder(LIBRARY, "Library", "Artists, albums, genres", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED, iconRes = R.drawable.ic_car_library),
+                folder("downloads", "Downloads", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED, iconRes = R.drawable.ic_car_downloads)
             )
             parent == HOME -> home()
             parent == LIBRARY -> listOf(
-                folder("artists", "Artists", type = MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
-                folder("albums:0", "Albums", type = MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
-                folder("genres", "Genres", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
-                folder("playlists", "Playlists", type = MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS),
-                folder("favorites", "Favorite songs", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                folder("artists", "Artists", type = MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS, iconRes = R.drawable.ic_car_artists),
+                folder("albums:0", "Albums", type = MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS, iconRes = R.drawable.ic_car_albums),
+                folder("genres", "Genres", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED, iconRes = R.drawable.ic_car_genres),
+                folder("playlists", "Playlists", type = MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS, iconRes = R.drawable.ic_car_playlists),
+                folder("favorites", "Favorite songs", type = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED, iconRes = R.drawable.ic_favorite)
             )
             parent == "downloads" -> offline.tracks.value.filter { it.status == OfflineStatus.READY }
                 .mapNotNull { it.record.song }.mapNotNull { item(it, group = "Downloads") }
@@ -137,12 +142,20 @@ class CarLibrary @Inject constructor(
     }
 
     fun folder(id: String, title: String, subtitle: String? = null, cover: String? = null,
-               type: @MediaMetadata.MediaType Int = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED): MediaItem =
+               type: @MediaMetadata.MediaType Int = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
+               iconRes: Int = R.drawable.ic_car_library): MediaItem =
         MediaItem.Builder().setMediaId(id).setMediaMetadata(MediaMetadata.Builder()
             .setTitle(title).setArtist(subtitle).setIsBrowsable(true).setIsPlayable(false)
             .setMediaType(type)
             .setExtras(extras(browsable = HINT_GRID))
-            .setArtworkUri(cover?.let(artwork::uri)).build()).build()
+            .setArtworkUri(cover?.let(artwork::uri) ?: resourceUri(iconRes)).build()).build()
+
+    /** A head unit draws its warning triangle for a null icon, so nodes without a cover
+     *  carry a bundled drawable — the same way RiPlay's browse tree does. */
+    private fun resourceUri(res: Int): Uri = Uri.Builder().scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
+        .authority(context.resources.getResourcePackageName(res))
+        .appendPath(context.resources.getResourceTypeName(res))
+        .appendPath(context.resources.getResourceEntryName(res)).build()
 
     private fun album(album: AlbumItem, group: String? = null): MediaItem =
         MediaItem.Builder().setMediaId("album:${album.id}").setMediaMetadata(MediaMetadata.Builder()
@@ -167,6 +180,7 @@ class CarLibrary @Inject constructor(
         .setTitle("Shuffle library").setSubtitle("Random songs")
         .setIsBrowsable(false).setIsPlayable(true)
         .setMediaType(MediaMetadata.MEDIA_TYPE_MIXED)
+        .setArtworkUri(resourceUri(R.drawable.ic_car_library))
         .setExtras(extras(group = "Play something", playable = HINT_LIST)).build()).build()
 
     private fun extras(group: String? = null, browsable: Int? = null, playable: Int? = null) = Bundle().apply {

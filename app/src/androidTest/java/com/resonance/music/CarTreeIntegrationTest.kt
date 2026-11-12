@@ -81,6 +81,12 @@ class CarTreeIntegrationTest {
                 listOf("artists", "albums:0", "genres", "playlists", "favorites"),
                 children(browser, "library").map { it.mediaId }
             )
+            // Folders have no cover; without an icon the head unit draws its warning triangle.
+            assertTrue(
+                "Every folder row carries an icon",
+                children(browser, CarLibrary.ROOT).all { it.mediaMetadata.artworkUri != null } &&
+                    children(browser, "library").all { it.mediaMetadata.artworkUri != null }
+            )
         } finally {
             main { browser.release() }
         }
