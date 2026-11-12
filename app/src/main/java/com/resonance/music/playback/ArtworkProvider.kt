@@ -34,6 +34,32 @@ class ArtworkStore @Inject constructor(
     private val offline: OfflineLibrary,
     private val api: SubsonicApiHelper
 ) {
+    init {
+        // The provider-side copy in cacheDir is not Coil's capped disk cache; cap it
+        // ourselves so old covers cannot grow the cache directory indefinitely.
+        Thread({ prune() }, "artwork-prune").apply { isDaemon = true }.start()
+    }
+
+    /** Keys that failed to fetch recently: served a not-found at once instead of
+     *  blocking a binder thread on a dead server again. */
+    private val misses = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private fun prune() {
+        val files = File(context.cacheDir, "media_artwork").listFiles()?.filter { it.isFile } ?: return
+        val cutoff = System.currentTimeMillis() - PRUNE_AGE_MS
+        val mutable = files.filter { it.length() > 0L && it.lastModified() >= cutoff }.toMutableList()
+        var total = mutable.sumOf { it.length() }
+        if (total > PRUNE_MAX_BYTES) mutable.sortedBy { it.lastModified() }.forEach {
+            if (total <= PRUNE_MAX_BYTES) return@forEach
+            total -= it.length(); it.delete()
+        }
+    }
+
+    private companion object {
+        const val MISS_TTL_MS = 60_000L
+        const val PRUNE_AGE_MS = 30L * 24 * 60 * 60 * 1000
+        const val PRUNE_MAX_BYTES = 200L * 1024 * 1024
+    }
     private val published = context.getSharedPreferences("media_artwork", Context.MODE_PRIVATE)
 
     fun uri(cover: String): Uri? {
@@ -47,6 +73,10 @@ class ArtworkStore @Inject constructor(
     suspend fun open(uri: Uri): ParcelFileDescriptor = withContext(Dispatchers.IO) {
         val key = uri.pathSegments.singleOrNull()?.takeIf { it.matches(Regex("[a-f0-9]{64}")) }
             ?: throw FileNotFoundException("Unknown artwork")
+        (misses[key])?.let { stamp ->
+            if (System.currentTimeMillis() - stamp < MISS_TTL_MS) throw FileNotFoundException("Artwork recently unavailable")
+            misses.remove(key)
+        }
         val entry = published.getString(key, null)?.split('\n', limit = 2)
             ?.takeIf { it.size == 2 } ?: throw FileNotFoundException("Unknown artwork")
         val (account, cover) = entry
@@ -54,20 +84,26 @@ class ArtworkStore @Inject constructor(
         val saved = offline.artworkFile(cover, account)?.takeIf { it.isFile }
         val file = saved ?: File(context.cacheDir, "media_artwork/$key.jpg")
         if (!file.isFile) {
-            val result = withTimeout(15_000) {
-                context.imageLoader.execute(ImageRequest.Builder(context)
-                    .data(api.getCoverArtUrl(cover, 600)).size(600).allowHardware(false).build())
+            val fetched = runCatching {
+                withTimeout(8_000) {
+                    context.imageLoader.execute(ImageRequest.Builder(context)
+                        .data(api.getCoverArtUrl(cover, 600)).size(600).allowHardware(false).build())
+                }
+            }.getOrNull()
+            if (fetched !is SuccessResult) {
+                misses[key] = System.currentTimeMillis()
+                throw FileNotFoundException("Artwork unavailable")
             }
-            if (result !is SuccessResult) throw FileNotFoundException("Artwork unavailable")
             if (account != offline.account()) throw FileNotFoundException("Account changed")
             file.parentFile?.mkdirs()
             val temporary = File.createTempFile("art-", ".jpg", file.parentFile)
             try {
-                temporary.outputStream().use { result.drawable.toBitmap().compress(Bitmap.CompressFormat.JPEG, 90, it) }
+                temporary.outputStream().use { fetched.drawable.toBitmap().compress(Bitmap.CompressFormat.JPEG, 90, it) }
                 if (!temporary.renameTo(file) && !file.isFile) throw FileNotFoundException("Could not cache artwork")
             } finally { temporary.delete() }
         }
         if (account != offline.account()) throw FileNotFoundException("Account changed")
+        misses.remove(key)
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 }
