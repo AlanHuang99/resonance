@@ -2,6 +2,32 @@
 
 All notable changes to Resonance will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Casting to DLNA/UPnP renderers and Google Cast devices (Chromecast, Google Home, Cast groups) on the LAN, with a cast sheet in the player, device discovery, and playback driven through the phone player.
+- Speaker volume follows the phone's media volume keys while casting, over UPnP RenderingControl or the Cast receiver's volume.
+- The car gets the app's shape instead of a flat list: Home shelves (Shuffle, Recently played, New, Often played, Random) and a Library folder with Artists, Albums, Genres, Playlists and Favorite songs, laid out with the car's own style hints.
+
+### Fixed
+
+- Reconnect a device that drops off the network, quits the receiver, or comes back up empty, for both Cast and DLNA, resuming at the phone player's position instead of going silent; a lost device now shows a message instead of failing quietly.
+- Hand the device the following track so it advances by itself: the speaker's own next button works and there is no silence between tracks.
+- Follow the device when it skips on its own, so the phone's queue, notification and Android Auto stay on the track that is actually playing.
+- End casting when playback is stopped on the device itself, handing audio back to the phone instead of resurrecting the cast.
+- Mirror volume changes made on the device back to the phone, so its keys do not fight the speaker.
+- Repeat one keeps playing through the speaker instead of falling silent after the first play, and a reordered or trimmed queue no longer leaves the device playing a stale next track.
+- Keep casting through a slow or unreliable network: a device that stops answering, drops the connection, comes back empty or is taken over by another app is detected within seconds instead of failing quietly.
+- Hold a Cast load until the receiver is ready, refuse it when the device rejects the stream, and surface that to the cast sheet instead of failing quietly.
+- Deliver the final Stop before closing the Cast socket, verify transport commands actually took effect, and stop polling while the device's pushed status is still fresh.
+- Keep the cast renderer playing through buffering gaps between tracks: pause/play mirrors `playWhenReady` instead of `isPlaying`, so a transition no longer sends a spurious Pause.
+- Let the system media card and Bluetooth controls drive the session again: platform media clients were being rejected by the controller allow-list.
+- Android Auto voice search no longer queries the server twice for the same query; the result is cached until the account changes.
+- Playing a single song by media ID plays that song instead of expanding it into its album queue.
+- Declare the correct DLNA mime per track in DIDL metadata (from the server's content type or the file suffix) instead of labeling every stream audio/mpeg, so strict renderers play FLAC/Opus/WAV.
+- Cap the provider-side artwork cache (prune covers older than 30 days, 200 MB total) and serve failed artwork lookups from a short negative cache instead of blocking a binder thread on a dead server again.
+
 ## [0.8.3] - 2026-11-09
 
 ### Fixed
