@@ -2,6 +2,7 @@ package com.resonance.music.tabata
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import androidx.media3.common.audio.AudioProcessor.UnhandledAudioFormatException
 import androidx.media3.common.audio.BaseAudioProcessor
 import java.nio.ByteBuffer
 import kotlin.math.*

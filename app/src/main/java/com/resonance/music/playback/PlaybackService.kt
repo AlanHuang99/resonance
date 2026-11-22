@@ -65,7 +65,7 @@ class PlaybackService : MediaLibraryService() {
                 enableAudioTrackPlaybackParams: Boolean
             ): AudioSink {
                 return DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(tabataFx)
+                    .setAudioProcessors(arrayOf(tabataFx))
                     .build()
             }
         }
