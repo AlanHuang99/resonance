@@ -87,7 +87,7 @@ fun ResonanceNavHost(
         return
     }
 
-    val startDestination = if (loggedIn) Routes.HOME else Routes.LOGIN
+    val startDestination = if (loggedIn) Routes.TABATA else Routes.LOGIN
 
     val onTabSelected: (String) -> Unit = { route ->
         navController.navigate(route) {
@@ -172,7 +172,7 @@ fun ResonanceNavHost(
             composable(Routes.LOGIN) {
                 LoginScreen(
                     onLoginSuccess = {
-                        navController.navigate(Routes.HOME) {
+                        navController.navigate(Routes.TABATA) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
                         }
                     }
