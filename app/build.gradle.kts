@@ -34,22 +34,20 @@ android {
         if (hasReleaseSigning) {
             create("release") {
                 val props = rootProject.file("signing.properties")
-                props.load(props.inputStream())
-                storeFile = rootProject.file(props["storeFile"] as String)
-                storePassword = props["storePassword"] as String
-                keyAlias = props["keyAlias"] as String
-                keyPassword = props["keyPassword"] as String
-            }
-        }
-    }
-
-    signingConfigs {
-        if (System.getenv("SIGNING_KEYSTORE") != null) {
-            create("ci") {
-                storeFile = file(System.getenv("SIGNING_KEYSTORE"))
-                storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "tabataflow"
-                keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
+                if (props.exists()) {
+                    val signingProps = Properties()
+                    signingProps.inputStream().use { signingProps.load(it) }
+                    storeFile = rootProject.file(signingProps["storeFile"] as String)
+                    storePassword = signingProps["storePassword"] ?: ""
+                    keyAlias = signingProps["keyAlias"] ?: "tabataflow"
+                    keyPassword = signingProps["keyPassword"] ?: ""
+                } else {
+                    // CI: keystore path + secrets from environment variables.
+                    storeFile = file(System.getenv("SIGNING_KEYSTORE"))
+                    storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+                    keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "tabataflow"
+                    keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
+                }
             }
         }
     }
