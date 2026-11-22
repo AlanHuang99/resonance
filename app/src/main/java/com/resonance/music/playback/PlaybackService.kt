@@ -1,6 +1,7 @@
 package com.resonance.music.playback
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
@@ -11,7 +12,10 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
@@ -30,11 +34,11 @@ import com.resonance.music.data.repository.AuthRepository
 import com.resonance.music.data.download.OfflineLibrary
 import com.resonance.music.data.download.OfflineStatus
 import com.resonance.music.MainActivity
+import com.resonance.music.tabata.TabataAudioProcessor
+import com.resonance.music.tabata.TabataConfig
+import com.resonance.music.tabata.TabataEngine
+import com.resonance.music.tabata.TabataRepository
 
-/**
- * Owns the ExoPlayer and MediaSession. The UI never touches the player directly;
- * it connects a MediaController to this session via [PlaybackManager].
- */
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
 
@@ -42,6 +46,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var auth: AuthRepository
     @Inject lateinit var offline: OfflineLibrary
     @Inject lateinit var reporting: PlaybackReporting
+    @Inject lateinit var tabataRepository: TabataRepository
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var mediaSession: MediaLibrarySession? = null
 
@@ -52,7 +57,20 @@ class PlaybackService : MediaLibraryService() {
             setSmallIcon(R.drawable.ic_launcher_monochrome)
         })
 
-        val player = ExoPlayer.Builder(this)
+        val tabataFx = tabataRepository.audioProcessor
+        val renderersFactory = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setAudioProcessors(arrayOf(tabataFx))
+                    .build()
+            }
+        }
+
+        val player = ExoPlayer.Builder(this, renderersFactory)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -61,16 +79,12 @@ class PlaybackService : MediaLibraryService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
-            // Hold a wake lock and Wi-Fi lock while playing so the stream keeps loading
-            // with the screen off. Needs the WAKE_LOCK permission.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(this).setLoadErrorHandlingPolicy(StreamLoadErrorPolicy())
             )
             .build()
 
-        // Skip past unplayable tracks instead of crashing, with a small guard
-        // against an infinite skip loop when many tracks fail in a row.
         var consecutiveFailures = 0
         player.addListener(object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) {
@@ -85,9 +99,6 @@ class PlaybackService : MediaLibraryService() {
                     player.pause()
                     return
                 }
-                // A lost connection says nothing about the track, and skipping would just
-                // burn through the queue while offline. Stay on it; play re-prepares from
-                // the same position.
                 if (error.isConnectionError()) return
                 consecutiveFailures++
                 if (consecutiveFailures > 3) {
@@ -128,7 +139,14 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    // Tapping the media notification opens the app.
+    fun startTabata(config: TabataConfig) {
+        tabataRepository.start(config)
+    }
+
+    fun stopTabata() {
+        tabataRepository.stop()
+    }
+
     private fun buildContentIntent(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -163,7 +181,6 @@ class PlaybackService : MediaLibraryService() {
     }
 }
 
-/** No network, a timeout, or a 5xx from the server or its proxy, as opposed to a bad track. */
 private fun PlaybackException.isConnectionError(): Boolean = when (errorCode) {
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> true
@@ -172,12 +189,6 @@ private fun PlaybackException.isConnectionError(): Boolean = when (errorCode) {
     else -> false
 }
 
-/**
- * Rides out short network drops (a Wi-Fi/cellular handoff, a dead spot, a server
- * restart) by retrying the stream for about 35 seconds while the player stays in
- * BUFFERING, instead of failing after ExoPlayer's default 3 retries. An unhandled
- * redirect or a 4xx reply fails straight away instead of waiting that out.
- */
 @OptIn(UnstableApi::class)
 private class StreamLoadErrorPolicy : DefaultLoadErrorHandlingPolicy() {
 
@@ -187,6 +198,5 @@ private class StreamLoadErrorPolicy : DefaultLoadErrorHandlingPolicy() {
         return super.getRetryDelayMsFor(loadErrorInfo)
     }
 
-    // The default backoff waits 0s, 1s, ... up to 5s between attempts: 10 retries is ~35s.
     override fun getMinimumLoadableRetryCount(dataType: Int): Int = 10
 }
