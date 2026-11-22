@@ -182,7 +182,8 @@ fun ResonanceNavHost(
             composable(Routes.HOME) {
                 HomeScreen(
                     onAlbumClick = { navController.navigate(Routes.album(it)) },
-                    onSeeAllClick = { onTabSelected(Routes.LIBRARY) }
+                    onSeeAllClick = { onTabSelected(Routes.LIBRARY) },
+                    onTabataClick = { navController.navigate(Routes.TABATA) }
                 )
             }
 
