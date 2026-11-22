@@ -9,7 +9,7 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import java.nio.ByteBuffer
 import kotlin.math.*
 
-@OptIn(markerClass = UnstableApi::class)
+@OptIn(UnstableApi::class)
 class TabataAudioProcessor : BaseAudioProcessor() {
 
     @Volatile var calm = false
