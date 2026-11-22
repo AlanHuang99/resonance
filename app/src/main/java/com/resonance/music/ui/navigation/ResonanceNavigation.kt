@@ -1,4 +1,304 @@
-// Este arquivo precisa ser lido antes de editar. Vou fazer isso no próximo passo.
-// Por ora, apenas a rota "tabata" será adicionada:
-// composable("tabata") { TabataScreen() }
-// O conteúdo completo será gravado após leitura do arquivo original.
+package com.resonance.music.ui.navigation
+
+import android.net.Uri
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.resonance.music.data.repository.AuthRepository
+import com.resonance.music.data.repository.MusicRepository
+import com.resonance.music.playback.PlaybackManager
+import com.resonance.music.ui.components.MiniPlayer
+import com.resonance.music.ui.screens.TabataScreen
+import com.resonance.music.ui.screens.album.AlbumScreen
+import com.resonance.music.ui.screens.artist.ArtistScreen
+import com.resonance.music.ui.screens.genre.GenreScreen
+import com.resonance.music.ui.screens.home.HomeScreen
+import com.resonance.music.ui.screens.library.LibraryScreen
+import com.resonance.music.ui.screens.login.LoginScreen
+import com.resonance.music.ui.screens.lyrics.LyricsScreen
+import com.resonance.music.ui.screens.player.PlayerScreen
+import com.resonance.music.ui.screens.playlist.PlaylistScreen
+import com.resonance.music.ui.screens.queue.QueueScreen
+import com.resonance.music.ui.screens.search.SearchScreen
+import com.resonance.music.ui.screens.settings.SettingsScreen
+import com.resonance.music.ui.screens.downloads.DownloadsScreen
+
+object Routes {
+    const val LOGIN = "login"
+    const val HOME = "home"
+    const val LIBRARY = "library"
+    const val SEARCH = "search"
+    const val PLAYER = "player"
+    const val LYRICS = "lyrics"
+    const val SETTINGS = "settings"
+    const val DOWNLOADS = "downloads"
+    const val QUEUE = "queue"
+    const val TABATA = "tabata"
+    const val ALBUM = "album/{albumId}"
+    const val ARTIST = "artist/{artistId}"
+    const val PLAYLIST = "playlist/{playlistId}"
+    const val GENRE = "genre/{genre}"
+
+    fun album(id: String) = "album/$id"
+    fun artist(id: String) = "artist/$id"
+    fun playlist(id: String) = "playlist/$id"
+    fun genre(name: String) = "genre/${Uri.encode(name)}"
+}
+
+@Composable
+fun ResonanceNavHost(
+    authRepository: AuthRepository = hiltViewModel<NavViewModel>().authRepository,
+    playbackManager: PlaybackManager = hiltViewModel<NavViewModel>().playbackManager,
+    musicRepository: MusicRepository = hiltViewModel<NavViewModel>().musicRepository
+) {
+    val navController = rememberNavController()
+    val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = null)
+    val nowPlaying by playbackManager.nowPlaying.collectAsState()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val onFullScreen = currentRoute == null ||
+            currentRoute in listOf(Routes.PLAYER, Routes.LYRICS, Routes.QUEUE, Routes.LOGIN)
+    val showBottomBar = !onFullScreen
+    val showMiniPlayer = !onFullScreen && nowPlaying.song != null
+
+    val loggedIn = isLoggedIn
+    if (loggedIn == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val startDestination = if (loggedIn) Routes.HOME else Routes.LOGIN
+
+    val onTabSelected: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            Column {
+                if (showMiniPlayer) {
+                    MiniPlayer(
+                        nowPlaying = nowPlaying,
+                        positionFlow = playbackManager.position,
+                        coverArtUrl = nowPlaying.song?.coverArt?.let {
+                            musicRepository.getCoverArtUrl(it, 128)
+                        },
+                        onPlayerClick = {
+                            navController.navigate(Routes.PLAYER) { launchSingleTop = true }
+                        },
+                        onPlayPauseClick = { playbackManager.togglePlayPause() },
+                        onNextClick = { playbackManager.next() }
+                    )
+                }
+
+                if (showBottomBar) {
+                    Surface(color = NavigationBarDefaults.containerColor) {
+                        Column {
+                            NavigationBar(
+                                modifier = Modifier.height(64.dp),
+                                containerColor = Color.Transparent,
+                                windowInsets = WindowInsets(0, 0, 0, 0)
+                            ) {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                                    label = { Text("Home", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
+                                    selected = currentRoute == Routes.HOME,
+                                    onClick = { onTabSelected(Routes.HOME) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    label = { Text("Search", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
+                                    selected = currentRoute == Routes.SEARCH,
+                                    onClick = { onTabSelected(Routes.SEARCH) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
+                                    label = { Text("Library", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
+                                    selected = currentRoute == Routes.LIBRARY,
+                                    onClick = { onTabSelected(Routes.LIBRARY) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Download, contentDescription = null) },
+                                    label = { Text("Downloads", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
+                                    selected = currentRoute == Routes.DOWNLOADS,
+                                    onClick = { onTabSelected(Routes.DOWNLOADS) }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                                    label = { Text("Settings", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
+                                    selected = currentRoute == Routes.SETTINGS,
+                                    onClick = { onTabSelected(Routes.SETTINGS) }
+                                )
+                            }
+                            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = Modifier
+                .padding(padding)
+                .consumeWindowInsets(padding)
+        ) {
+            composable(Routes.LOGIN) {
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Routes.HOME) {
+                HomeScreen(
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onSeeAllClick = { onTabSelected(Routes.LIBRARY) }
+                )
+            }
+
+            composable(Routes.LIBRARY) {
+                LibraryScreen(
+                    onArtistClick = { navController.navigate(Routes.artist(it)) },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onPlaylistClick = { navController.navigate(Routes.playlist(it)) },
+                    onGenreClick = { navController.navigate(Routes.genre(it)) }
+                )
+            }
+
+            composable(Routes.SEARCH) {
+                SearchScreen(
+                    onArtistClick = { navController.navigate(Routes.artist(it)) },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) }
+                )
+            }
+
+            composable(
+                Routes.PLAYER,
+                enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+            ) {
+                PlayerScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onLyricsClick = { navController.navigate(Routes.LYRICS) },
+                    onQueueClick = { navController.navigate(Routes.QUEUE) },
+                    onArtistClick = { id ->
+                        navController.popBackStack()
+                        navController.navigate(Routes.artist(id))
+                    },
+                    onAlbumClick = { id ->
+                        navController.popBackStack()
+                        navController.navigate(Routes.album(id))
+                    }
+                )
+            }
+
+            composable(Routes.LYRICS) {
+                LyricsScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.QUEUE) {
+                QueueScreen(
+                    playbackManager = playbackManager,
+                    musicRepository = musicRepository,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.DOWNLOADS) {
+                DownloadsScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onLogout = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Routes.TABATA) {
+                TabataScreen()
+            }
+
+            composable(
+                route = Routes.ALBUM,
+                arguments = listOf(navArgument("albumId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                AlbumScreen(
+                    albumId = backStackEntry.arguments?.getString("albumId") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onArtistClick = { navController.navigate(Routes.artist(it)) }
+                )
+            }
+
+            composable(
+                route = Routes.ARTIST,
+                arguments = listOf(navArgument("artistId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                ArtistScreen(
+                    artistId = backStackEntry.arguments?.getString("artistId") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onArtistClick = { navController.navigate(Routes.artist(it)) }
+                )
+            }
+
+            composable(
+                route = Routes.PLAYLIST,
+                arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                PlaylistScreen(
+                    playlistId = backStackEntry.arguments?.getString("playlistId") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) },
+                    onArtistClick = { navController.navigate(Routes.artist(it)) }
+                )
+            }
+
+            composable(
+                route = Routes.GENRE,
+                arguments = listOf(navArgument("genre") { type = NavType.StringType })
+            ) { backStackEntry ->
+                GenreScreen(
+                    genre = backStackEntry.arguments?.getString("genre") ?: "",
+                    onBackClick = { navController.popBackStack() },
+                    onAlbumClick = { navController.navigate(Routes.album(it)) }
+                )
+            }
+        }
+    }
+}
