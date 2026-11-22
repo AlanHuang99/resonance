@@ -13,7 +13,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.resonance.music"
+        applicationId = "com.tabataflow.music"
         minSdk = 31
         targetSdk = 34
         versionCode = 15
@@ -34,20 +34,22 @@ android {
         if (hasReleaseSigning) {
             create("release") {
                 val props = rootProject.file("signing.properties")
-                if (props.exists()) {
-                    val signingProps = Properties()
-                    props.inputStream().use { signingProps.load(it) }
-                    storeFile = rootProject.file(signingProps["storeFile"] as String)
-                    storePassword = signingProps["storePassword"] as String
-                    keyAlias = signingProps["keyAlias"] as String
-                    keyPassword = signingProps["keyPassword"] as String
-                } else {
-                    // CI: keystore path + secrets from environment variables.
-                    storeFile = rootProject.file(System.getenv("SIGNING_KEYSTORE"))
-                    storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
-                    keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "resonance"
-                    keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
-                }
+                props.load(props.inputStream())
+                storeFile = rootProject.file(props["storeFile"] as String)
+                storePassword = props["storePassword"] as String
+                keyAlias = props["keyAlias"] as String
+                keyPassword = props["keyPassword"] as String
+            }
+        }
+    }
+
+    signingConfigs {
+        if (System.getenv("SIGNING_KEYSTORE") != null) {
+            create("ci") {
+                storeFile = file(System.getenv("SIGNING_KEYSTORE"))
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "tabataflow"
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: ""
             }
         }
     }
@@ -152,6 +154,6 @@ dependencies {
 
     // Unit tests (JVM) — queue transform logic
     testImplementation(libs.junit)
-    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
