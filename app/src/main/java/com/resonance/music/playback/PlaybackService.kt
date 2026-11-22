@@ -37,6 +37,7 @@ import com.resonance.music.MainActivity
 import com.resonance.music.tabata.TabataAudioProcessor
 import com.resonance.music.tabata.TabataConfig
 import com.resonance.music.tabata.TabataEngine
+import com.resonance.music.tabata.TabataRepository
 
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
@@ -45,10 +46,9 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var auth: AuthRepository
     @Inject lateinit var offline: OfflineLibrary
     @Inject lateinit var reporting: PlaybackReporting
+    @Inject lateinit var tabataRepository: TabataRepository
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var mediaSession: MediaLibrarySession? = null
-    private lateinit var tabataFx: TabataAudioProcessor
-    private lateinit var tabataEngine: TabataEngine
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -57,7 +57,7 @@ class PlaybackService : MediaLibraryService() {
             setSmallIcon(R.drawable.ic_launcher_monochrome)
         })
 
-        tabataFx = TabataAudioProcessor()
+        val tabataFx = tabataRepository.audioProcessor
         val renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,
@@ -84,8 +84,6 @@ class PlaybackService : MediaLibraryService() {
                 DefaultMediaSourceFactory(this).setLoadErrorHandlingPolicy(StreamLoadErrorPolicy())
             )
             .build()
-
-        tabataEngine = TabataEngine(tabataFx, serviceScope)
 
         var consecutiveFailures = 0
         player.addListener(object : Player.Listener {
@@ -142,11 +140,11 @@ class PlaybackService : MediaLibraryService() {
     }
 
     fun startTabata(config: TabataConfig) {
-        tabataEngine.start(config)
+        tabataRepository.start(config)
     }
 
     fun stopTabata() {
-        tabataEngine.stop()
+        tabataRepository.stop()
     }
 
     private fun buildContentIntent(): PendingIntent {
