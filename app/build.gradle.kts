@@ -22,11 +22,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // From-source builds (e.g. F-Droid) have no signing material; only wire up a
-    // release signing config when it's actually provided — via a local
-    // signing.properties or CI environment variables. Otherwise the release build
-    // stays unsigned and still compiles, so it can be built from source and signed
-    // downstream.
     val hasReleaseSigning = rootProject.file("signing.properties").exists() ||
         System.getenv("SIGNING_KEYSTORE") != null
 
@@ -36,13 +31,12 @@ android {
                 val props = rootProject.file("signing.properties")
                 if (props.exists()) {
                     val signingProps = Properties()
-                    signingProps.inputStream().use { signingProps.load(it) }
-                    storeFile = rootProject.file(signingProps["storeFile"] as String)
-                    storePassword = signingProps["storePassword"] ?: ""
-                    keyAlias = signingProps["keyAlias"] ?: "tabataflow"
-                    keyPassword = signingProps["keyPassword"] ?: ""
+                    props.inputStream().use { signingProps.load(it) }
+                    storeFile = rootProject.file(signingProps.getProperty("storeFile"))
+                    storePassword = signingProps.getProperty("storePassword") ?: ""
+                    keyAlias = signingProps.getProperty("keyAlias") ?: "tabataflow"
+                    keyPassword = signingProps.getProperty("keyPassword") ?: ""
                 } else {
-                    // CI: keystore path + secrets from environment variables.
                     storeFile = file(System.getenv("SIGNING_KEYSTORE"))
                     storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: ""
                     keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "tabataflow"
@@ -85,18 +79,12 @@ android {
         buildConfig = true
     }
 
-    // F-Droid reproducibility: omit AGP's encrypted dependency-metadata block
-    // (DependencyInfoBlock) from the signed APK.
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
     }
 }
 
-// F-Droid reproducibility: the ART/baseline profile (assets/dexopt/baseline.prof)
-// that AGP compiles from merged library profiles is not byte-for-byte
-// reproducible, so disable its generation.
-// See https://f-droid.org/docs/Reproducible_Builds/
 tasks.configureEach {
     if (name.contains("ArtProfile") || name.contains("StartupProfile")) {
         enabled = false
@@ -104,7 +92,6 @@ tasks.configureEach {
 }
 
 dependencies {
-    // Compose
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.compose.ui)
@@ -115,7 +102,6 @@ dependencies {
     implementation(libs.compose.animation)
     debugImplementation(libs.compose.ui.tooling)
 
-    // AndroidX
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime)
@@ -125,32 +111,25 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.work)
 
-    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    // Media3
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
     implementation(libs.media3.ui)
 
-    // Network
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
 
-    // Image loading
     implementation(libs.coil.compose)
 
-    // Coroutines
     implementation(libs.kotlinx.coroutines)
 
-    // Reorderable queue (Compose 1.6-compatible line)
     implementation(libs.reorderable)
 
-    // Unit tests (JVM) — queue transform logic
     testImplementation(libs.junit)
     androidTestImplementation("androidx.test.runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
