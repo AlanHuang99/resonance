@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -37,10 +38,10 @@ import com.resonance.music.ui.components.SlimTopBar
 fun HomeScreen(
     onAlbumClick: (String) -> Unit,
     onSeeAllClick: () -> Unit,
+    onTabataClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    // Stable reference — avoids new lambda allocation on every recomposition
     val coverArtUrlBuilder = remember<(String) -> String?> { { viewModel.getCoverArtUrl(it) } }
 
     LaunchedEffect(Unit) {
@@ -102,13 +103,20 @@ fun HomeScreen(
                 }
 
                 item(key = "shuffle") {
-                    FilledTonalButton(
-                        onClick = { viewModel.shuffleAll() },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Shuffle all")
+                        FilledTonalButton(onClick = { viewModel.shuffleAll() }) {
+                            Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Shuffle all")
+                        }
+                        FilledTonalButton(onClick = onTabataClick) {
+                            Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Tabata")
+                        }
                     }
                 }
 
@@ -119,8 +127,6 @@ fun HomeScreen(
               }
               PullToRefreshContainer(
                   state = pullState,
-                  // The 1.2.x container draws its circle even at rest; fade it with the
-                  // pull progress so it only appears while pulling or refreshing.
                   modifier = Modifier
                       .align(Alignment.TopCenter)
                       .graphicsLayer {
@@ -193,7 +199,6 @@ private fun HeroCard(
                 contentScale = ContentScale.Crop
             )
         }
-        // Scrim so the text stays legible over the artwork
         Box(
             modifier = Modifier
                 .fillMaxSize()
